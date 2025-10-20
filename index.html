@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voting System</title>
+    <!-- QR Code Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- QR Code Scanner Library -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -392,6 +396,59 @@
         .back-button {
             margin-bottom: 20px;
         }
+
+        /* QR Code Styles */
+        .qr-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .qr-code-container {
+            display: inline-block;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        #qr-scanner {
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+
+        #qr-reader {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .share-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .share-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .scanner-view {
+            display: none;
+        }
+
+        .scanner-view.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -404,6 +461,7 @@
         <nav class="nav">
             <button class="active" onclick="showView('polls')">All Polls</button>
             <button onclick="showView('create')">Create Poll</button>
+            <button onclick="showView('scanner')">📷 Scan QR</button>
         </nav>
 
         <!-- Polls List View -->
@@ -444,6 +502,17 @@
                     <button class="btn btn-secondary btn-small" onclick="showView('polls')">← Back to Polls</button>
                 </div>
                 <div id="poll-detail"></div>
+            </div>
+        </div>
+
+        <!-- QR Scanner View -->
+        <div id="scanner-view" class="view">
+            <div class="card">
+                <h2>Scan QR Code</h2>
+                <p style="color: #666; margin-bottom: 20px;">Point your camera at a poll QR code to join</p>
+                <div id="qr-reader"></div>
+                <div id="scan-result"></div>
+                <button class="btn btn-secondary" onclick="stopScanner(); showView('polls');" style="margin-top: 20px;">Cancel</button>
             </div>
         </div>
     </div>
@@ -580,24 +649,10 @@
             document.getElementById('current-user-id').textContent = userId;
         }
 
-        // View Management
-        function showView(viewName) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-
-            if (viewName === 'polls') {
-                document.getElementById('polls-view').classList.add('active');
-                document.querySelector('.nav button:first-child').classList.add('active');
-                renderPollsList();
-            } else if (viewName === 'create') {
-                document.getElementById('create-view').classList.add('active');
-                document.querySelector('.nav button:last-child').classList.add('active');
-                initializeCreateForm();
-            } else if (viewName === 'detail') {
-                document.getElementById('detail-view').classList.add('active');
-                renderPollDetail(currentPollId);
-            }
-        }
+        // View Management (will be replaced later with scanner support)
+        let showView = function(viewName) {
+            // Placeholder - replaced below with full implementation
+        };
 
         // Create Poll Form
         function initializeCreateForm() {
@@ -764,6 +819,22 @@
                     content += renderResults(results);
                 }
 
+                // QR Code Section
+                const pollUrl = window.location.origin + window.location.pathname + '#poll/' + pollId;
+                content += `
+                    <div class="qr-section">
+                        <h3>Share this Poll</h3>
+                        <p style="color: #666; margin-bottom: 10px;">Scan QR code to join this poll</p>
+                        <div class="qr-code-container">
+                            <div id="qrcode-${pollId}"></div>
+                        </div>
+                        <div class="share-buttons">
+                            <button class="btn btn-primary btn-small" onclick="copyPollLink('${pollUrl}')">📋 Copy Link</button>
+                            <button class="btn btn-secondary btn-small" onclick="downloadQRCode('${pollId}')">⬇️ Download QR</button>
+                        </div>
+                    </div>
+                `;
+
                 // Management buttons for creator
                 if (isCreator) {
                     content += `
@@ -775,6 +846,21 @@
                 }
 
                 container.innerHTML = content;
+
+                // Generate QR Code
+                setTimeout(() => {
+                    const qrContainer = document.getElementById('qrcode-' + pollId);
+                    if (qrContainer && !qrContainer.hasChildNodes()) {
+                        new QRCode(qrContainer, {
+                            text: pollUrl,
+                            width: 200,
+                            height: 200,
+                            colorDark: '#667eea',
+                            colorLight: '#ffffff',
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                    }
+                }, 100);
             } catch (error) {
                 container.innerHTML = `<div class="message error">${error.message}</div>`;
             }
@@ -864,9 +950,139 @@
             }
         });
 
+        // QR Code Helper Functions
+        function copyPollLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Poll link copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy link. URL: ' + url);
+            });
+        }
+
+        function downloadQRCode(pollId) {
+            const qrCanvas = document.querySelector('#qrcode-' + pollId + ' canvas');
+            if (qrCanvas) {
+                const link = document.createElement('a');
+                link.download = 'poll_' + pollId + '_qr.png';
+                link.href = qrCanvas.toDataURL();
+                link.click();
+            }
+        }
+
+        // QR Scanner Functions
+        let html5QrcodeScanner = null;
+
+        function startScanner() {
+            const qrReader = document.getElementById('qr-reader');
+            if (!qrReader) return;
+
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+            }
+
+            html5QrcodeScanner = new Html5Qrcode("qr-reader");
+            
+            Html5Qrcode.getCameras().then(cameras => {
+                if (cameras && cameras.length) {
+                    html5QrcodeScanner.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: 250 },
+                        (decodedText) => {
+                            // Handle successful scan
+                            if (decodedText.includes('#poll/')) {
+                                const pollId = decodedText.split('#poll/')[1];
+                                stopScanner();
+                                currentPollId = pollId;
+                                showView('detail');
+                            } else {
+                                document.getElementById('scan-result').innerHTML = 
+                                    '<div class="message error">Invalid QR code. Please scan a poll QR code.</div>';
+                            }
+                        },
+                        (errorMessage) => {
+                            // Scanning in progress, no action needed
+                        }
+                    ).catch(err => {
+                        document.getElementById('scan-result').innerHTML = 
+                            '<div class="message error">Error starting camera: ' + err + '</div>';
+                    });
+                }
+            }).catch(err => {
+                document.getElementById('scan-result').innerHTML = 
+                    '<div class="message error">No cameras found. Please check permissions.</div>';
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => {
+                    html5QrcodeScanner.clear();
+                    html5QrcodeScanner = null;
+                }).catch(() => {
+                    // Already stopped
+                });
+            }
+        }
+
+        // URL Hash Handling for Deep Links
+        function handleHashChange() {
+            const hash = window.location.hash;
+            if (hash.startsWith('#poll/')) {
+                const pollId = hash.substring(6);
+                try {
+                    votingSystem.getPoll(pollId);
+                    currentPollId = pollId;
+                    showView('detail');
+                } catch (error) {
+                    alert('Poll not found: ' + pollId);
+                    window.location.hash = '';
+                    showView('polls');
+                }
+            }
+        }
+
+        // Update showView to handle scanner
+        showView = function(viewName) {
+            // Stop scanner when leaving scanner view
+            if (viewName !== 'scanner') {
+                stopScanner();
+            }
+
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+
+            if (viewName === 'polls') {
+                document.getElementById('polls-view').classList.add('active');
+                document.querySelector('.nav button:nth-child(1)').classList.add('active');
+                renderPollsList();
+            } else if (viewName === 'create') {
+                document.getElementById('create-view').classList.add('active');
+                document.querySelector('.nav button:nth-child(2)').classList.add('active');
+                initializeCreateForm();
+            } else if (viewName === 'scanner') {
+                document.getElementById('scanner-view').classList.add('active');
+                document.querySelector('.nav button:nth-child(3)').classList.add('active');
+                document.getElementById('scan-result').innerHTML = '';
+                startScanner();
+            } else if (viewName === 'detail') {
+                document.getElementById('detail-view').classList.add('active');
+                renderPollDetail(currentPollId);
+                // Update URL hash
+                window.location.hash = '#poll/' + currentPollId;
+            }
+        };
+
         // Initialize
         initializeUser();
-        renderPollsList();
+        
+        // Handle URL hash on load
+        window.addEventListener('hashchange', handleHashChange);
+        handleHashChange();
+        
+        // If no hash, show polls list
+        if (!window.location.hash) {
+            renderPollsList();
+        }
     </script>
 </body>
 </html>

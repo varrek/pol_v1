@@ -449,19 +449,66 @@
         .scanner-view.active {
             display: block;
         }
+
+        /* Language Switcher Styles */
+        .language-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px;
+            border-radius: 20px;
+        }
+
+        .language-switcher button {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: white;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .language-switcher button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .language-switcher button.active {
+            background: white;
+            color: #667eea;
+        }
+
+        @media (max-width: 600px) {
+            .language-switcher {
+                position: static;
+                justify-content: center;
+                margin-bottom: 15px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Language Switcher -->
+        <div class="language-switcher">
+            <button onclick="setLanguage('en')" id="lang-en">EN</button>
+            <button onclick="setLanguage('uk')" id="lang-uk">UA</button>
+        </div>
+
         <div class="header">
-            <h1>🗳️ Voting System</h1>
-            <div class="user-id">User ID: <span id="current-user-id"></span></div>
+            <h1>🗳️ <span id="header-title">Voting System</span></h1>
+            <div class="user-id"><span id="user-id-label">User ID</span>: <span id="current-user-id"></span></div>
         </div>
 
         <nav class="nav">
-            <button class="active" onclick="showView('polls')">All Polls</button>
-            <button onclick="showView('create')">Create Poll</button>
-            <button onclick="showView('scanner')">📷 Scan QR</button>
+            <button class="active" onclick="showView('polls')" id="nav-polls">All Polls</button>
+            <button onclick="showView('create')" id="nav-create">Create Poll</button>
+            <button onclick="showView('scanner')" id="nav-scanner">📷 Scan QR</button>
         </nav>
 
         <!-- Polls List View -->
@@ -518,6 +565,290 @@
     </div>
 
     <script>
+        // ==================== INTERNATIONALIZATION (i18n) ====================
+        
+        // Translation data
+        const translations = {
+            en: {
+                // Header
+                headerTitle: 'Voting System',
+                userIdLabel: 'User ID',
+                
+                // Navigation
+                navPolls: 'All Polls',
+                navCreate: 'Create Poll',
+                navScanner: '📷 Scan QR',
+                
+                // Polls List
+                pollsTitle: 'All Polls',
+                noPollsTitle: 'No polls yet',
+                noPollsText: 'Create your first poll to get started!',
+                pollsOptions: 'options',
+                pollsVotes: 'votes',
+                pollStatusOpen: 'OPEN',
+                pollStatusClosed: 'CLOSED',
+                
+                // Create Poll
+                createTitle: 'Create New Poll',
+                createQuestionLabel: 'Question',
+                createQuestionPlaceholder: 'Enter your poll question',
+                createOptionsLabel: 'Options',
+                createOptionsMinimum: '(minimum 2)',
+                createOptionPlaceholder: 'Option',
+                createAddOption: '+ Add Option',
+                createSubmit: 'Create Poll',
+                createSuccess: 'Poll created successfully!',
+                createErrorQuestion: 'Question is required',
+                createErrorOptions: 'Please provide at least 2 options',
+                
+                // Poll Detail
+                backToPolls: '← Back to Polls',
+                pollClosed: 'This poll is closed',
+                alreadyVoted: 'You have already voted on this poll',
+                castVoteButton: 'Cast Vote',
+                totalVotes: 'Total Votes',
+                
+                // QR Code Section
+                shareTitle: 'Share this Poll',
+                shareDescription: 'Scan QR code to join this poll',
+                shareCopyLink: '📋 Copy Link',
+                shareDownloadQR: '⬇️ Download QR',
+                shareLinkCopied: 'Poll link copied to clipboard!',
+                shareLinkFailed: 'Failed to copy link. URL',
+                
+                // Scanner
+                scanTitle: 'Scan QR Code',
+                scanDescription: 'Point your camera at a poll QR code to join',
+                scanCancel: 'Cancel',
+                scanInvalid: 'Invalid QR code. Please scan a poll QR code.',
+                scanErrorCamera: 'Error starting camera',
+                scanErrorNoCameras: 'No cameras found. Please check permissions.',
+                
+                // Poll Management
+                closePollButton: 'Close Poll',
+                deletePollButton: 'Delete Poll',
+                closePollConfirm: 'Are you sure you want to close this poll? No more votes can be cast after closing.',
+                deletePollConfirm: 'Are you sure you want to delete this poll? This action cannot be undone.',
+                
+                // Poll Results
+                votesCount: 'votes',
+                
+                // Errors and Messages
+                pollNotFound: 'Poll not found',
+                errorOccurred: 'An error occurred',
+                removeOption: 'Remove',
+                
+                // Empty state
+                loading: 'Loading...'
+            },
+            uk: {
+                // Header / Заголовок
+                headerTitle: 'Система Голосування',
+                userIdLabel: 'ID Користувача',
+                
+                // Navigation / Навігація
+                navPolls: 'Всі Опитування',
+                navCreate: 'Створити Опитування',
+                navScanner: '📷 Сканувати QR',
+                
+                // Polls List / Список опитувань
+                pollsTitle: 'Всі Опитування',
+                noPollsTitle: 'Опитувань ще немає',
+                noPollsText: 'Створіть перше опитування, щоб розпочати!',
+                pollsOptions: 'варіантів',
+                pollsVotes: 'голосів',
+                pollStatusOpen: 'ВІДКРИТЕ',
+                pollStatusClosed: 'ЗАКРИТЕ',
+                
+                // Create Poll / Створення опитування
+                createTitle: 'Створити Нове Опитування',
+                createQuestionLabel: 'Питання',
+                createQuestionPlaceholder: 'Введіть питання опитування',
+                createOptionsLabel: 'Варіанти',
+                createOptionsMinimum: '(мінімум 2)',
+                createOptionPlaceholder: 'Варіант',
+                createAddOption: '+ Додати Варіант',
+                createSubmit: 'Створити Опитування',
+                createSuccess: 'Опитування успішно створено!',
+                createErrorQuestion: 'Питання обов\'язкове',
+                createErrorOptions: 'Будь ласка, надайте щонайменше 2 варіанти',
+                
+                // Poll Detail / Деталі опитування
+                backToPolls: '← Назад до Опитувань',
+                pollClosed: 'Це опитування закрите',
+                alreadyVoted: 'Ви вже проголосували в цьому опитуванні',
+                castVoteButton: 'Проголосувати',
+                totalVotes: 'Всього Голосів',
+                
+                // QR Code Section / Секція QR-коду
+                shareTitle: 'Поділитися Опитуванням',
+                shareDescription: 'Скануйте QR-код, щоб приєднатися до опитування',
+                shareCopyLink: '📋 Копіювати Посилання',
+                shareDownloadQR: '⬇️ Завантажити QR',
+                shareLinkCopied: 'Посилання опитування скопійовано в буфер обміну!',
+                shareLinkFailed: 'Не вдалося скопіювати посилання. URL',
+                
+                // Scanner / Сканер
+                scanTitle: 'Сканувати QR-код',
+                scanDescription: 'Наведіть камеру на QR-код опитування',
+                scanCancel: 'Скасувати',
+                scanInvalid: 'Недійсний QR-код. Будь ласка, скануйте QR-код опитування.',
+                scanErrorCamera: 'Помилка запуску камери',
+                scanErrorNoCameras: 'Камери не знайдено. Будь ласка, перевірте дозволи.',
+                
+                // Poll Management / Управління опитуванням
+                closePollButton: 'Закрити Опитування',
+                deletePollButton: 'Видалити Опитування',
+                closePollConfirm: 'Ви впевнені, що хочете закрити це опитування? Після закриття голосувати більше не можна.',
+                deletePollConfirm: 'Ви впевнені, що хочете видалити це опитування? Цю дію неможливо скасувати.',
+                
+                // Poll Results / Результати опитування
+                votesCount: 'голосів',
+                
+                // Errors and Messages / Помилки та повідомлення
+                pollNotFound: 'Опитування не знайдено',
+                errorOccurred: 'Сталася помилка',
+                removeOption: 'Видалити',
+                
+                // Empty state / Пустий стан
+                loading: 'Завантаження...'
+            }
+        };
+        
+        // Current language
+        let currentLanguage = 'en';
+        
+        // Translation function with fallback
+        function t(key) {
+            const translation = translations[currentLanguage]?.[key];
+            if (translation !== undefined) {
+                return translation;
+            }
+            // Fallback to English
+            const fallback = translations.en[key];
+            if (fallback !== undefined) {
+                console.warn(`Missing translation for key "${key}" in language "${currentLanguage}"`);
+                return fallback;
+            }
+            // Return key if not found
+            console.error(`Translation key "${key}" not found`);
+            return key;
+        }
+        
+        // Initialize language from browser or localStorage
+        function initializeLanguage() {
+            // Check localStorage first
+            const savedLang = localStorage.getItem('votingSystemLanguage');
+            if (savedLang && translations[savedLang]) {
+                currentLanguage = savedLang;
+            } else {
+                // Detect browser language
+                const browserLang = navigator.language || navigator.userLanguage;
+                if (browserLang.startsWith('uk')) {
+                    currentLanguage = 'uk';
+                } else {
+                    currentLanguage = 'en';
+                }
+            }
+            updatePageLanguage();
+        }
+        
+        // Set language
+        function setLanguage(lang) {
+            if (translations[lang]) {
+                currentLanguage = lang;
+                localStorage.setItem('votingSystemLanguage', lang);
+                updatePageLanguage();
+            }
+        }
+        
+        // Update all translatable elements on the page
+        function updatePageLanguage() {
+            // Update language switcher buttons
+            document.querySelectorAll('.language-switcher button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const activeBtn = document.getElementById(`lang-${currentLanguage}`);
+            if (activeBtn) activeBtn.classList.add('active');
+            
+            // Update static elements
+            const setText = (id, key) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = t(key);
+            };
+            
+            setText('header-title', 'headerTitle');
+            setText('user-id-label', 'userIdLabel');
+            setText('nav-polls', 'navPolls');
+            setText('nav-create', 'navCreate');
+            setText('nav-scanner', 'navScanner');
+            
+            // Re-render current view if needed
+            const activeView = document.querySelector('.view.active');
+            if (activeView) {
+                if (activeView.id === 'polls-view') {
+                    renderPollsList();
+                } else if (activeView.id === 'create-view') {
+                    updateCreateFormLanguage();
+                } else if (activeView.id === 'detail-view' && currentPollId) {
+                    renderPollDetail(currentPollId);
+                } else if (activeView.id === 'scanner-view') {
+                    updateScannerLanguage();
+                }
+            }
+        }
+        
+        // Update create form language
+        function updateCreateFormLanguage() {
+            const cardTitle = document.querySelector('#create-view h2');
+            if (cardTitle) cardTitle.textContent = t('createTitle');
+            
+            const questionLabel = document.querySelector('#create-view label[for="poll-question"]');
+            if (questionLabel) questionLabel.textContent = t('createQuestionLabel') + ' *';
+            
+            const questionInput = document.getElementById('poll-question');
+            if (questionInput) questionInput.placeholder = t('createQuestionPlaceholder');
+            
+            const optionsLabel = document.querySelector('#create-view .form-group:nth-child(2) label');
+            if (optionsLabel) optionsLabel.innerHTML = `${t('createOptionsLabel')} * ${t('createOptionsMinimum')}`;
+            
+            const addOptionBtn = document.querySelector('#create-view .btn-secondary');
+            if (addOptionBtn) addOptionBtn.textContent = t('createAddOption');
+            
+            const submitBtn = document.querySelector('#create-view .btn-primary');
+            if (submitBtn) submitBtn.textContent = t('createSubmit');
+            
+            // Update option placeholders
+            updateOptionPlaceholders();
+        }
+        
+        // Update scanner language
+        function updateScannerLanguage() {
+            const scannerTitle = document.querySelector('#scanner-view h2');
+            if (scannerTitle) scannerTitle.textContent = t('scanTitle');
+            
+            const scannerDesc = document.querySelector('#scanner-view > .card > p');
+            if (scannerDesc) scannerDesc.textContent = t('scanDescription');
+            
+            const cancelBtn = document.querySelector('#scanner-view .btn-secondary');
+            if (cancelBtn) cancelBtn.textContent = t('scanCancel');
+        }
+        
+        // Update option input placeholders
+        function updateOptionPlaceholders() {
+            const inputs = document.querySelectorAll('#options-container input');
+            inputs.forEach((input, index) => {
+                input.placeholder = `${t('createOptionPlaceholder')} ${index + 1}`;
+            });
+            
+            const removeBtns = document.querySelectorAll('#options-container .btn-danger');
+            removeBtns.forEach(btn => {
+                btn.textContent = t('removeOption');
+            });
+        }
+        
+        // ==================== VOTING SYSTEM ====================
+        
         // Voting System Implementation (Browser-compatible)
         class VotingSystem {
             constructor() {
@@ -671,8 +1002,8 @@
             const div = document.createElement('div');
             div.className = 'option-input';
             div.innerHTML = `
-                <input type="text" placeholder="Option ${index + 1}" data-option-index="${index}">
-                <button type="button" class="btn btn-danger btn-small" onclick="removeOption(this)" ${index < 2 ? 'disabled' : ''}>Remove</button>
+                <input type="text" placeholder="${t('createOptionPlaceholder')} ${index + 1}" data-option-index="${index}">
+                <button type="button" class="btn btn-danger btn-small" onclick="removeOption(this)" ${index < 2 ? 'disabled' : ''}>${t('removeOption')}</button>
             `;
             container.appendChild(div);
         }
@@ -715,14 +1046,14 @@
 
             // Validate question
             if (!question) {
-                document.getElementById('question-error').textContent = 'Question is required';
+                document.getElementById('question-error').textContent = t('createErrorQuestion');
                 document.getElementById('poll-question').classList.add('error');
                 hasError = true;
             }
 
             // Validate options
             if (options.length < 2) {
-                showMessage('create-message', 'Please provide at least 2 options', 'error');
+                showMessage('create-message', t('createErrorOptions'), 'error');
                 optionInputs.forEach(input => {
                     if (!input.value.trim()) input.classList.add('error');
                 });
@@ -733,7 +1064,7 @@
 
             try {
                 const pollId = votingSystem.createPoll(question, options, currentUserId);
-                showMessage('create-message', 'Poll created successfully!', 'success');
+                showMessage('create-message', t('createSuccess'), 'success');
                 setTimeout(() => {
                     currentPollId = pollId;
                     showView('detail');
@@ -754,8 +1085,8 @@
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                         </svg>
-                        <h3>No polls yet</h3>
-                        <p>Create your first poll to get started!</p>
+                        <h3>${t('noPollsTitle')}</h3>
+                        <p>${t('noPollsText')}</p>
                     </div>
                 `;
                 return;
@@ -763,12 +1094,13 @@
 
             container.innerHTML = polls.map(poll => {
                 const results = votingSystem.getResults(poll.id);
+                const statusText = poll.status === 'open' ? t('pollStatusOpen') : t('pollStatusClosed');
                 return `
                     <div class="poll-card" onclick="viewPoll('${poll.id}')">
                         <h3>${poll.question}</h3>
                         <div class="poll-meta">
-                            ${results.options.length} options • ${results.totalVotes} votes
-                            <span class="poll-status ${poll.status}">${poll.status.toUpperCase()}</span>
+                            ${results.options.length} ${t('pollsOptions')} • ${results.totalVotes} ${t('pollsVotes')}
+                            <span class="poll-status ${poll.status}">${statusText}</span>
                         </div>
                     </div>
                 `;
@@ -793,11 +1125,11 @@
                 let content = `<h2>${poll.question}</h2>`;
 
                 if (isClosed) {
-                    content += `<div class="message info">This poll is closed</div>`;
+                    content += `<div class="message info">${t('pollClosed')}</div>`;
                 }
 
                 if (hasVoted) {
-                    content += `<div class="message info">You have already voted on this poll</div>`;
+                    content += `<div class="message info">${t('alreadyVoted')}</div>`;
                 }
 
                 // Show voting form or results
@@ -812,7 +1144,7 @@
                                     </label>
                                 `).join('')}
                             </div>
-                            <button type="submit" class="btn btn-primary">Cast Vote</button>
+                            <button type="submit" class="btn btn-primary">${t('castVoteButton')}</button>
                         </form>
                     `;
                 } else {
@@ -823,14 +1155,14 @@
                 const pollUrl = window.location.origin + window.location.pathname + '#poll/' + pollId;
                 content += `
                     <div class="qr-section">
-                        <h3>Share this Poll</h3>
-                        <p style="color: #666; margin-bottom: 10px;">Scan QR code to join this poll</p>
+                        <h3>${t('shareTitle')}</h3>
+                        <p style="color: #666; margin-bottom: 10px;">${t('shareDescription')}</p>
                         <div class="qr-code-container">
                             <div id="qrcode-${pollId}"></div>
                         </div>
                         <div class="share-buttons">
-                            <button class="btn btn-primary btn-small" onclick="copyPollLink('${pollUrl}')">📋 Copy Link</button>
-                            <button class="btn btn-secondary btn-small" onclick="downloadQRCode('${pollId}')">⬇️ Download QR</button>
+                            <button class="btn btn-primary btn-small" onclick="copyPollLink('${pollUrl}')">${t('shareCopyLink')}</button>
+                            <button class="btn btn-secondary btn-small" onclick="downloadQRCode('${pollId}')">${t('shareDownloadQR')}</button>
                         </div>
                     </div>
                 `;
@@ -839,8 +1171,8 @@
                 if (isCreator) {
                     content += `
                         <div class="action-buttons">
-                            ${!isClosed ? `<button class="btn btn-secondary" onclick="handleClosePoll('${pollId}')">Close Poll</button>` : ''}
-                            <button class="btn btn-danger" onclick="handleDeletePoll('${pollId}')">Delete Poll</button>
+                            ${!isClosed ? `<button class="btn btn-secondary" onclick="handleClosePoll('${pollId}')">${t('closePollButton')}</button>` : ''}
+                            <button class="btn btn-danger" onclick="handleDeletePoll('${pollId}')">${t('deletePollButton')}</button>
                         </div>
                     `;
                 }
@@ -880,7 +1212,7 @@
                             <div class="result-bar">
                                 <div class="result-label">
                                     <span>${option}</span>
-                                    <span>${votes} votes (${percentage}%)</span>
+                                    <span>${votes} ${t('votesCount')} (${percentage}%)</span>
                                 </div>
                                 <div class="progress-bar">
                                     <div class="progress-fill" style="width: ${widthPercentage}%">
@@ -891,7 +1223,7 @@
                         `;
                     }).join('')}
                     <div class="total-votes">
-                        Total Votes: ${results.totalVotes}
+                        ${t('totalVotes')}: ${results.totalVotes}
                     </div>
                 </div>
             `;
@@ -910,7 +1242,7 @@
         }
 
         function handleClosePoll(pollId) {
-            if (confirm('Are you sure you want to close this poll? No more votes can be cast after closing.')) {
+            if (confirm(t('closePollConfirm'))) {
                 try {
                     votingSystem.closePoll(pollId, currentUserId);
                     renderPollDetail(pollId);
@@ -921,7 +1253,7 @@
         }
 
         function handleDeletePoll(pollId) {
-            if (confirm('Are you sure you want to delete this poll? This action cannot be undone.')) {
+            if (confirm(t('deletePollConfirm'))) {
                 try {
                     votingSystem.deletePoll(pollId, currentUserId);
                     showView('polls');
@@ -953,9 +1285,9 @@
         // QR Code Helper Functions
         function copyPollLink(url) {
             navigator.clipboard.writeText(url).then(() => {
-                alert('Poll link copied to clipboard!');
+                alert(t('shareLinkCopied'));
             }).catch(() => {
-                alert('Failed to copy link. URL: ' + url);
+                alert(t('shareLinkFailed') + ': ' + url);
             });
         }
 
@@ -996,7 +1328,7 @@
                                 showView('detail');
                             } else {
                                 document.getElementById('scan-result').innerHTML = 
-                                    '<div class="message error">Invalid QR code. Please scan a poll QR code.</div>';
+                                    `<div class="message error">${t('scanInvalid')}</div>`;
                             }
                         },
                         (errorMessage) => {
@@ -1004,12 +1336,12 @@
                         }
                     ).catch(err => {
                         document.getElementById('scan-result').innerHTML = 
-                            '<div class="message error">Error starting camera: ' + err + '</div>';
+                            `<div class="message error">${t('scanErrorCamera')}: ${err}</div>`;
                     });
                 }
             }).catch(err => {
                 document.getElementById('scan-result').innerHTML = 
-                    '<div class="message error">No cameras found. Please check permissions.</div>';
+                    `<div class="message error">${t('scanErrorNoCameras')}</div>`;
             });
         }
 
@@ -1034,7 +1366,7 @@
                     currentPollId = pollId;
                     showView('detail');
                 } catch (error) {
-                    alert('Poll not found: ' + pollId);
+                    alert(t('pollNotFound') + ': ' + pollId);
                     window.location.hash = '';
                     showView('polls');
                 }
@@ -1073,6 +1405,7 @@
         };
 
         // Initialize
+        initializeLanguage();  // Initialize language first
         initializeUser();
         
         // Handle URL hash on load

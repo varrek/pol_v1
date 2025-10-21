@@ -9,6 +9,9 @@ A simple, lightweight voting system for creating polls, casting votes, and viewi
 - ✅ View real-time results
 - ✅ Manage polls (close, delete)
 - ✅ Authorization controls for poll creators
+- ✅ Multilingual support (English and Ukrainian)
+- ✅ QR code generation and scanning for easy poll sharing
+- ✅ Responsive web interface
 
 ## Installation
 
@@ -234,6 +237,67 @@ try {
 - **Index-based voting**: Options referenced by index for efficiency
 - **Creator authorization**: Only poll creators can close or delete their polls
 - **One vote per user**: Enforced at the system level
+
+## Multilingual Support
+
+The voting system supports multiple languages through an internationalization (i18n) system:
+
+### Available Languages
+
+- **English (en)** - Default language
+- **Ukrainian (uk)** - Українська мова
+
+### Language Features
+
+- **Automatic Detection**: The system automatically detects your browser's language preference on first visit
+- **Language Switcher**: Use the language selector in the top-right corner to switch between languages
+- **Persistent Preference**: Your language choice is saved in browser storage for future visits
+- **Complete Translation**: All UI elements, buttons, messages, and labels are translated
+- **Smart Content**: Poll questions and options remain in their original language while UI translates
+
+### Using the Language Switcher
+
+1. Look for the language switcher (EN/UA buttons) in the top-right corner of the page
+2. Click on your preferred language
+3. The interface will immediately update to the selected language
+4. Your preference will be remembered for future visits
+
+### Adding New Languages
+
+To add support for additional languages:
+
+1. Open `index.html` and locate the `translations` object in the JavaScript section
+2. Add a new language object following the existing pattern:
+
+```javascript
+const translations = {
+    en: { /* English translations */ },
+    uk: { /* Ukrainian translations */ },
+    fr: { // Add French
+        headerTitle: 'Système de Vote',
+        // ... other translations
+    }
+};
+```
+
+3. Add a button to the language switcher:
+
+```html
+<button onclick="setLanguage('fr')" id="lang-fr">FR</button>
+```
+
+4. Ensure all translation keys from English are included in your new language
+
+### Translation Keys
+
+All UI text is managed through translation keys organized by feature area:
+- Header and navigation
+- Poll list and creation
+- Voting interface
+- Results display
+- QR code sharing
+- Scanner functionality
+- Error messages and confirmations
 
 ## Limitations
 

@@ -26,44 +26,30 @@ jobs:
        contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository (PR event)
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-
-      - name: Checkout repository (issue_comment event)
-        if: github.event_name == 'issue_comment'
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Checkout PR branch (issue_comment event)
-        if: github.event_name == 'issue_comment'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr checkout ${{ github.event.issue.number }}
-
-      - name: Get PR base branch
+      - name: Get PR info
         id: pr-info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "base_ref=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
+            echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           else
             BASE_REF=$(gh pr view ${{ github.event.issue.number }} --json baseRefName -q '.baseRefName')
             echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+            echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            gh pr checkout ${{ github.event.issue.number }}
           fi
 
       - name: Claude Code Review
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-sonnet-4-20250514
-          timeout_minutes: 30
-          track_progress: true
           prompt: |
             Review this Pull Request using the standards in .claude/agents/code-reviewer.md
 
@@ -72,6 +58,4 @@ jobs:
             3. Apply the review checklist to modified files
             4. Run `npm run lint` to check for linting issues
             5. Provide feedback organized by severity (Critical, Warning, Suggestion)
-          claude_args: |
-            --max-turns 10
-            --allowedTools "Read,Glob,Grep,Bash(git:*),Bash(npm run lint*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+          claude_args: "--max-turns 10 --allowedTools Read,Glob,Grep,Bash"

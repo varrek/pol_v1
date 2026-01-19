@@ -1,17 +1,17 @@
 name: Claude Code - Issues
 
 on:
-  issue_comment:
-    types: [created]
   issues:
     types: [opened, assigned]
+  issue_comment:
+    types: [created]
 
 jobs:
   claude:
     # Only run on issues (not PRs) when @claude is mentioned
     if: |
-      (github.event_name == 'issue_comment' && !github.event.issue.pull_request && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))) ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -30,3 +30,42 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Check for new branches and create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          # Fetch latest refs
+          git fetch origin
+          
+          # Look for branch created for this issue
+          BRANCH_NAME="fix/issue-${ISSUE_NUMBER}"
+          
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "Found branch: $BRANCH_NAME"
+            
+            # Check if PR already exists
+            EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --json number --jq '.[0].number' 2>/dev/null || echo "")
+            
+            if [ -z "$EXISTING_PR" ]; then
+              echo "Creating PR..."
+              PR_URL=$(gh pr create \
+                --title "Fix: ${ISSUE_TITLE}" \
+                --body "Fixes #${ISSUE_NUMBER}
+
+          This PR was automatically created by Claude Code to address issue #${ISSUE_NUMBER}." \
+                --base main \
+                --head "$BRANCH_NAME")
+              
+              echo "Created PR: $PR_URL"
+              
+              # Comment on the issue
+              gh issue comment "$ISSUE_NUMBER" --body "I've created a pull request to address this issue: $PR_URL"
+            else
+              echo "PR already exists: #$EXISTING_PR"
+            fi
+          else
+            echo "No branch found for this issue"
+          fi

@@ -1,0 +1,82 @@
+name: PR - Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  id-token: write
+  actions: read
+
+jobs:
+  review:
+    # Run on PR events, or on PR comments that mention @claude
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (PR event)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Checkout repository (comment event)
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout PR branch (comment event)
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" == "issue_comment" ]; then
+            gh pr checkout ${{ github.event.issue.number }}
+          fi
+
+      - name: Get PR base branch
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "base_ref=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
+            echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            PR_NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
+            BASE_REF=$(gh pr view "$PR_NUMBER" --json baseRefName -q '.baseRefName' 2>/dev/null || echo "main")
+            echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this Pull Request using the standards in .claude/agents/code-reviewer.md
+
+            1. Read .claude/agents/code-reviewer.md for the full checklist
+            2. Run `git diff origin/${{ steps.pr-info.outputs.base_ref }}...HEAD` to see changes
+            3. Apply the review checklist to modified files
+            4. Run `npm run lint` to check for linting issues (if applicable)
+            5. Provide feedback organized by severity (Critical, Warning, Suggestion)

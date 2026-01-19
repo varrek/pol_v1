@@ -134,7 +134,6 @@ jobs:
             - Don't refactor working code just for style
             - If no issues found, report that and skip PR creation
           claude_args: "--max-turns 35 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
-          timeout_minutes: "45"
 
   report-completion:
     needs: [select-directories, review-directory]

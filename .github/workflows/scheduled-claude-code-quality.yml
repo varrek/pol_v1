@@ -86,14 +86,9 @@ jobs:
           echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Claude Code Quality Review
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-sonnet-4-20250514
-          timeout_minutes: 45
-          base_branch: main
-          branch_prefix: claude/code-quality-
-          track_progress: true
           prompt: |
             # Weekly Code Quality Review
 
@@ -138,9 +133,8 @@ jobs:
             - Fix issues that are clear improvements
             - Don't refactor working code just for style
             - If no issues found, report that and skip PR creation
-          claude_args: |
-            --max-turns 35
-            --allowedTools "Read,Write,Edit,Glob,Grep,Bash(git:*),Bash(gh:*),Bash(npm run lint*)"
+          claude_args: "--max-turns 35 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
+          timeout_minutes: "45"
 
   report-completion:
     needs: [select-directories, review-directory]

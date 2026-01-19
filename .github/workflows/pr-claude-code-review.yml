@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened]
   issue_comment:
     types: [created]
+  issues:
+    types: [opened, assigned]
 
 concurrency:
   group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number || github.event.issue.number }}
@@ -13,25 +15,52 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
-  issues: read
+  issues: write
   id-token: write
+  actions: read # Required for Claude to read CI results on PRs
 
 jobs:
   review:
-    # Run on PR events, or on issue comments that mention @claude
+    # Run on PR events, issue comments that mention @claude (including on issues without PRs),
+    # or when issues are opened/assigned with @claude in title or body
     if: |
       github.event_name == 'pull_request' ||
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request &&
-       contains(github.event.comment.body, '@claude'))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (PR event)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Checkout repository (issue_comment event on PR)
+        if: |
+          github.event_name == 'issue_comment' &&
+          github.event.issue.pull_request
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get PR info
+      - name: Checkout PR branch (issue_comment event on PR)
+        if: |
+          github.event_name == 'issue_comment' &&
+          github.event.issue.pull_request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr checkout ${{ github.event.issue.number }}
+
+      - name: Checkout repository (issue_comment or issues event on regular issue)
+        if: |
+          (github.event_name == 'issue_comment' && !github.event.issue.pull_request) ||
+          github.event_name == 'issues'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR base branch or default branch
         id: pr-info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,11 +68,17 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "base_ref=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
             echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-          else
+            echo "is_pr=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "issue_comment" ] && [ -n "${{ github.event.issue.pull_request }}" ]; then
             BASE_REF=$(gh pr view ${{ github.event.issue.number }} --json baseRefName -q '.baseRefName')
             echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
             echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-            gh pr checkout ${{ github.event.issue.number }}
+            echo "is_pr=true" >> $GITHUB_OUTPUT
+          else
+            # For regular issues, use the default branch
+            DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+            echo "base_ref=$DEFAULT_BRANCH" >> $GITHUB_OUTPUT
+            echo "is_pr=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Claude Code Review
@@ -51,11 +86,11 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
-            Review this Pull Request using the standards in .claude/agents/code-reviewer.md
+            Review this Pull Request or respond to this issue using the standards in .claude/agents/code-reviewer.md
 
             1. Read .claude/agents/code-reviewer.md for the full checklist
-            2. Run `git diff origin/${{ steps.pr-info.outputs.base_ref }}...HEAD` to see changes
-            3. Apply the review checklist to modified files
-            4. Run `npm run lint` to check for linting issues
+            2. If this is a PR, run `git diff origin/${{ steps.pr-info.outputs.base_ref }}...HEAD` to see changes. If this is an issue, review the issue description and context.
+            3. Apply the review checklist to modified files (if this is a PR)
+            4. Run `npm run lint` to check for linting issues (if applicable)
             5. Provide feedback organized by severity (Critical, Warning, Suggestion)
           claude_args: "--max-turns 10 --allowedTools Read,Glob,Grep,Bash"

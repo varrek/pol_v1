@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write # Required for Claude to create PRs and commit changes
   pull-requests: write
   issues: write
   id-token: write
@@ -68,16 +68,24 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "base_ref=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
             echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "issue_number=" >> $GITHUB_OUTPUT
             echo "is_pr=true" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "issue_comment" ] && [ -n "${{ github.event.issue.pull_request }}" ]; then
             BASE_REF=$(gh pr view ${{ github.event.issue.number }} --json baseRefName -q '.baseRefName')
             echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
             echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
             echo "is_pr=true" >> $GITHUB_OUTPUT
           else
-            # For regular issues, use the default branch
+            # For regular issues or issue comments on regular issues
             DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
             echo "base_ref=$DEFAULT_BRANCH" >> $GITHUB_OUTPUT
+            echo "pr_number=" >> $GITHUB_OUTPUT
+            if [ "${{ github.event_name }}" == "issues" ]; then
+              echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            elif [ "${{ github.event_name }}" == "issue_comment" ]; then
+              echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            fi
             echo "is_pr=false" >> $GITHUB_OUTPUT
           fi
 
@@ -86,11 +94,31 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
-            Review this Pull Request or respond to this issue using the standards in .claude/agents/code-reviewer.md
+            You are responding to a GitHub ${{ steps.pr-info.outputs.is_pr == 'true' && 'Pull Request' || 'Issue' }}. Use the standards in .claude/agents/code-reviewer.md.
 
+            **If this is a Pull Request (is_pr=true):**
             1. Read .claude/agents/code-reviewer.md for the full checklist
-            2. If this is a PR, run `git diff origin/${{ steps.pr-info.outputs.base_ref }}...HEAD` to see changes. If this is an issue, review the issue description and context.
-            3. Apply the review checklist to modified files (if this is a PR)
+            2. Run `git diff origin/${{ steps.pr-info.outputs.base_ref }}...HEAD` to see all changes
+            3. Apply the review checklist to modified files
             4. Run `npm run lint` to check for linting issues (if applicable)
             5. Provide feedback organized by severity (Critical, Warning, Suggestion)
-          claude_args: "--max-turns 10 --allowedTools Read,Glob,Grep,Bash"
+            6. Post your review as a comment on the PR
+
+            **If this is an Issue (is_pr=false):**
+            Issue number: ${{ steps.pr-info.outputs.issue_number || github.event.issue.number }}
+            
+            1. Read the issue description and understand what needs to be done
+            2. Read .claude/agents/code-reviewer.md for coding standards
+            3. If the issue requires code changes:
+               - Create a new branch: `git checkout -b fix/issue-${{ steps.pr-info.outputs.issue_number || github.event.issue.number }}`
+               - Make the necessary changes following the code review standards
+               - Run `npm run lint` and fix any issues
+               - Commit your changes with a clear message
+               - Push the branch: `git push origin fix/issue-${{ steps.pr-info.outputs.issue_number || github.event.issue.number }}`
+               - Create a Pull Request: `gh pr create --title "Fix: [issue title]" --body "Fixes #${{ steps.pr-info.outputs.issue_number || github.event.issue.number }}" --base main`
+               - Comment on the issue: `gh issue comment ${{ steps.pr-info.outputs.issue_number || github.event.issue.number }} --body "I've created a PR to address this issue."`
+            4. If the issue is a question or doesn't require code changes:
+               - Provide a helpful response: `gh issue comment ${{ steps.pr-info.outputs.issue_number || github.event.issue.number }} --body "Your response here"`
+            5. **IMPORTANT**: Always respond to the issue - either with a comment or by creating a PR. Never leave an issue without a response.
+          claude_args: |
+            --max-turns 15

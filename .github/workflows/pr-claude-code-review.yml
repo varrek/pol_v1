@@ -61,9 +61,11 @@ jobs:
           fi
 
       - name: Claude Code Review
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_bedrock: false
+          use_vertex: false
           prompt: |
             You are reviewing Pull Request #${{ steps.pr-info.outputs.pr_number }}.
             
@@ -78,6 +80,3 @@ jobs:
                - **Warning**: Should fix (conventions, performance, duplication)
                - **Suggestion**: Consider improving (naming, optimization, docs)
             6. Post your review as a comment on the PR
-          claude_args: |
-            --max-turns 10
-            --allowedTools "Read,Glob,Grep,Bash(git:*),Bash(npm run lint*)"

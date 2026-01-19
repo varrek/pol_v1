@@ -1,4 +1,4 @@
-# Voting System
+# Voting System v
 
 A simple, lightweight voting system for creating polls, casting votes, and viewing results.
 

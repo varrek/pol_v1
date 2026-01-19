@@ -1,0 +1,113 @@
+name: Issue - Claude Handler
+
+on:
+  issues:
+    types: [opened, assigned]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  handle-issue:
+    # Only run on issues (not PRs) when @claude is mentioned
+    if: |
+      (github.event_name == 'issues' && 
+       !github.event.issue.pull_request &&
+       (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))) ||
+      (github.event_name == 'issue_comment' && 
+       !github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Claude Code - Handle Issue
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are responding to GitHub Issue #${{ github.event.issue.number }}.
+            
+            **Issue Title:** ${{ github.event.issue.title }}
+            
+            **Issue Description:**
+            ${{ github.event.issue.body }}
+            
+            ${{ github.event_name == 'issue_comment' && format('**Latest Comment:**\n{0}', github.event.comment.body) || '' }}
+            
+            **Instructions:**
+            1. Read and understand the issue above
+            2. Read .claude/agents/code-reviewer.md for coding standards (if it exists)
+            3. Determine if this issue requires code changes or is just a question
+
+            **If code changes are needed:**
+            - Create a new branch: `git checkout -b fix/issue-${{ github.event.issue.number }}`
+            - Make the necessary changes to fix the issue
+            - Run `npm run lint` if available and fix any issues
+            - Commit your changes: `git commit -m "Fix: ${{ github.event.issue.title }}"`
+            - Push the branch: `git push -u origin fix/issue-${{ github.event.issue.number }}`
+            
+            **If no code changes needed (question/discussion):**
+            - Just provide a helpful response explaining your answer
+            
+            **IMPORTANT:** 
+            - Always complete your task fully
+            - If you create code changes, make sure to push the branch
+            - Your response will be posted as a comment on the issue automatically
+
+      - name: Check if branch was created
+        id: check-branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="fix/issue-${{ github.event.issue.number }}"
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "branch_exists=true" >> $GITHUB_OUTPUT
+            echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "branch_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.check-branch.outputs.branch_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${{ steps.check-branch.outputs.branch_name }}"
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          
+          # Check if PR already exists for this branch
+          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          
+          if [ -z "$EXISTING_PR" ]; then
+            # Create the PR
+            PR_URL=$(gh pr create \
+              --title "Fix: ${{ github.event.issue.title }}" \
+              --body "Fixes #$ISSUE_NUMBER
+
+            This PR was automatically created by Claude Code to address issue #$ISSUE_NUMBER." \
+              --base main \
+              --head "$BRANCH_NAME" 2>&1)
+            
+            echo "Created PR: $PR_URL"
+            
+            # Comment on the issue
+            gh issue comment "$ISSUE_NUMBER" \
+              --body "I've created a pull request to address this issue: $PR_URL"
+          else
+            echo "PR already exists: #$EXISTING_PR"
+          fi

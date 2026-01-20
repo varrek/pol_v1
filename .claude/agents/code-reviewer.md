@@ -39,12 +39,15 @@ Senior code reviewer ensuring high standards for the codebase.
 - Include context: operation names, resource IDs
 - Use proper try/catch with typed errors
 
-### Testing (Jest)
+### Testing (Jest) - MANDATORY
+- **ALL new functionality MUST have tests** - no exceptions
+- **Block PRs without test coverage** for new features
 - Behavior-driven tests, not implementation details
 - Factory pattern: `getMockX(overrides?: Partial<X>)`
 - Descriptive test names: "should [expected behavior] when [condition]"
 - Proper setup/teardown with beforeEach/afterEach
 - Mock external dependencies, not internal modules
+- Run `npm test` to verify all tests pass before approving
 
 ### Security & Performance
 - No exposed secrets/API keys

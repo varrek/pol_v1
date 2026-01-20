@@ -187,6 +187,14 @@ class VotingSystem {
     return { ...poll }; // Return a copy
   }
 
+  getAllPolls(): Poll[] {
+    return Array.from(this.polls.values()).map(poll => ({ ...poll }));
+  }
+
+  hasUserVoted(pollId: string, userId: string): boolean {
+    return this.votes.some(v => v.pollId === pollId && v.userId === userId);
+  }
+
   // ==========================================================================
   // Helper Methods
   // ==========================================================================

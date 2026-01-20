@@ -1,31 +1,57 @@
 # Project Context
 
 ## Purpose
-[Describe your project's purpose and goals]
+Simple voting system for creating polls and casting votes with a web-based UI.
 
 ## Tech Stack
-- [List your primary technologies]
-- [e.g., TypeScript, React, Node.js]
+- TypeScript
+- Jest for testing
+- HTML/CSS/JavaScript for web UI
 
 ## Project Conventions
 
 ### Code Style
-[Describe your code style preferences, formatting rules, and naming conventions]
+- Use TypeScript strict mode
+- Prefer interfaces over types
+- Use factory patterns for test data
 
 ### Architecture Patterns
-[Document your architectural decisions and patterns]
+- Single-file web application (index.html)
+- In-memory data storage
+- Event-driven UI updates
 
 ### Testing Strategy
-[Explain your testing approach and requirements]
+
+**All new functionality MUST include automated tests.**
+
+- **Test-Driven Development (TDD)**: Write failing tests first, then implement
+- **Behavior-driven tests**: Test what code does, not how it does it
+- **Factory pattern**: Use `getMockX(overrides?)` for test data
+- **Pre-commit hooks**: Tests run automatically before each commit
+- **CI/CD**: Tests run on all pull requests before code review
+
+Commands:
+```bash
+npm test              # Run all tests
+npm run test:watch    # Watch mode
+npm run test:coverage # Coverage report
+```
 
 ### Git Workflow
-[Describe your branching strategy and commit conventions]
+- Feature branches from main
+- Pre-commit hooks run tests
+- PRs require passing tests
+- Code review via Claude
 
 ## Domain Context
-[Add domain-specific knowledge that AI assistants need to understand]
+- Polls have questions and multiple options
+- Users can vote once per poll
+- Poll creators can close or delete polls
 
 ## Important Constraints
-[List any technical, business, or regulatory constraints]
+- Tests must pass before commits
+- PRs without tests for new features will not be approved
 
 ## External Dependencies
-[Document key external services, APIs, or systems]
+- Jest for testing framework
+- Husky for Git hooks

@@ -457,6 +457,54 @@ describe('VotingSystem', () => {
   });
 
   // ==========================================================================
+  // Requirement: Poll Share URL
+  // ==========================================================================
+
+  describe('Poll Share URL', () => {
+    test('Generate share URL with poll ID', () => {
+      const pollId = system.createPoll('Question?', ['A', 'B'], 'creator');
+
+      // WHEN requesting a share URL for a poll
+      const shareUrl = system.getPollShareUrl(pollId, 'https://example.com');
+
+      // THEN the URL contains the poll ID as a hash fragment
+      expect(shareUrl).toBe('https://example.com#poll=poll_1');
+      expect(shareUrl).toContain(pollId);
+    });
+
+    test('Generate share URL with different base URLs', () => {
+      const pollId = system.createPoll('Question?', ['A', 'B'], 'creator');
+
+      // WHEN generating URLs with different base URLs
+      const url1 = system.getPollShareUrl(pollId, 'https://polls.example.com');
+      const url2 = system.getPollShareUrl(pollId, 'http://localhost:3000');
+
+      // THEN both URLs correctly encode the poll ID
+      expect(url1).toBe('https://polls.example.com#poll=poll_1');
+      expect(url2).toBe('http://localhost:3000#poll=poll_1');
+    });
+
+    test('Share URL for non-existent poll throws error', () => {
+      // WHEN requesting share URL for non-existent poll
+      // THEN the system throws an error
+      expect(() => {
+        system.getPollShareUrl('non_existent', 'https://example.com');
+      }).toThrow('Poll not found');
+    });
+
+    test('Share URL works for closed polls', () => {
+      const pollId = system.createPoll('Question?', ['A', 'B'], 'creator');
+      system.closePoll(pollId, 'creator');
+
+      // WHEN requesting share URL for closed poll
+      const shareUrl = system.getPollShareUrl(pollId, 'https://example.com');
+
+      // THEN the URL is still generated (for viewing results)
+      expect(shareUrl).toBe('https://example.com#poll=poll_1');
+    });
+  });
+
+  // ==========================================================================
   // Integration Tests
   // ==========================================================================
 

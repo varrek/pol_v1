@@ -196,6 +196,18 @@ class VotingSystem {
   }
 
   // ==========================================================================
+  // Poll Sharing
+  // ==========================================================================
+
+  getPollShareUrl(pollId: string, baseUrl: string): string {
+    const poll = this.polls.get(pollId);
+    if (!poll) {
+      throw new Error('Poll not found');
+    }
+    return `${baseUrl}#poll=${pollId}`;
+  }
+
+  // ==========================================================================
   // Helper Methods
   // ==========================================================================
 

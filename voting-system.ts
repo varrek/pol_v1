@@ -155,8 +155,12 @@ class VotingSystem {
       throw new Error('Only the poll creator can close this poll');
     }
 
-    poll.status = 'closed';
-    poll.closedAt = new Date();
+    const updatedPoll: Poll = {
+      ...poll,
+      status: 'closed',
+      closedAt: new Date(),
+    };
+    this.polls.set(pollId, updatedPoll);
   }
 
   deletePoll(pollId: string, userId: string): void {

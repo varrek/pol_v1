@@ -212,8 +212,39 @@ class VotingSystem {
 }
 
 // ============================================================================
+// URL Helpers
+// ============================================================================
+
+/**
+ * Generates a shareable URL for a poll
+ * @param pollId - The ID of the poll to share
+ * @param baseUrl - Optional base URL (defaults to empty string for relative URLs)
+ * @returns The shareable poll URL
+ */
+function getPollShareUrl(pollId: string, baseUrl: string = ''): string {
+  if (!pollId || pollId.trim() === '') {
+    throw new Error('Poll ID cannot be empty');
+  }
+  return `${baseUrl}?poll=${encodeURIComponent(pollId)}`;
+}
+
+/**
+ * Extracts poll ID from a URL query string
+ * @param url - The URL to parse
+ * @returns The poll ID if present, null otherwise
+ */
+function getPollIdFromUrl(url: string): string | null {
+  try {
+    const urlObj = new URL(url, 'http://localhost');
+    return urlObj.searchParams.get('poll');
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
 // Export
 // ============================================================================
 
-export { VotingSystem, Poll, Vote, PollResults };
+export { VotingSystem, Poll, Vote, PollResults, getPollShareUrl, getPollIdFromUrl };
 

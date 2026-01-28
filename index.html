@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voting System</title>
+    <!-- QR Code Library - using qrcodejs for better compatibility -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         * {
             margin: 0;
@@ -392,6 +394,91 @@
         .back-button {
             margin-bottom: 20px;
         }
+
+        /* QR Code Styles */
+        .qr-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .qr-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .qr-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .qr-container.visible {
+            display: flex;
+        }
+
+        .qr-code-wrapper {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #qr-code-canvas {
+            display: block;
+        }
+
+        .share-url {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .share-url input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .share-url input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-share {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-share:hover {
+            background: #5568d3;
+        }
+
+        .qr-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .copy-success {
+            color: #4caf50;
+            font-size: 14px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -774,6 +861,28 @@
                     `;
                 }
 
+                // QR Code Section - available for all polls
+                content += `
+                    <div class="qr-section">
+                        <h3>📤 Share This Poll</h3>
+                        <button class="btn btn-share" onclick="toggleQRCode('${pollId}')" id="share-poll-btn">
+                            Show QR Code
+                        </button>
+                        <div id="qr-container" class="qr-container">
+                            <div class="qr-code-wrapper">
+                                <div id="qr-code-container"></div>
+                            </div>
+                            <div class="share-url">
+                                <input type="text" id="share-url-input" readonly>
+                                <button class="btn btn-secondary btn-small" id="copy-url-btn" onclick="copyShareUrl()">Copy</button>
+                            </div>
+                            <div class="qr-actions">
+                                <button class="btn btn-secondary btn-small" onclick="downloadQRCode('${pollId}')">Download QR</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
                 container.innerHTML = content;
             } catch (error) {
                 container.innerHTML = `<div class="message error">${error.message}</div>`;
@@ -854,6 +963,109 @@
             }, 5000);
         }
 
+        // QR Code Functions
+        function getPollShareUrl(pollId) {
+            const baseUrl = window.location.origin + window.location.pathname;
+            return `${baseUrl}?poll=${pollId}`;
+        }
+
+        function toggleQRCode(pollId) {
+            const container = document.getElementById('qr-container');
+            const isVisible = container.classList.contains('visible');
+            
+            if (isVisible) {
+                container.classList.remove('visible');
+            } else {
+                generateQRCode(pollId);
+                container.classList.add('visible');
+            }
+        }
+
+        let currentQRCode = null;
+        
+        function generateQRCode(pollId) {
+            const shareUrl = getPollShareUrl(pollId);
+            const qrContainer = document.getElementById('qr-code-container');
+            const urlInput = document.getElementById('share-url-input');
+            
+            // Set the URL in the input field
+            urlInput.value = shareUrl;
+            
+            // Clear previous QR code
+            qrContainer.innerHTML = '';
+            
+            // Generate QR code using qrcodejs
+            try {
+                currentQRCode = new QRCode(qrContainer, {
+                    text: shareUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#667eea',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch (error) {
+                console.error('QR Code generation error:', error);
+                qrContainer.innerHTML = '<p style="color: #f44336;">Failed to generate QR code</p>';
+            }
+        }
+
+        function copyShareUrl() {
+            const urlInput = document.getElementById('share-url-input');
+            urlInput.select();
+            document.execCommand('copy');
+            
+            // Show copy success feedback
+            const copyBtn = document.getElementById('copy-url-btn');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            copyBtn.classList.add('btn-success');
+            
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.classList.remove('btn-success');
+            }, 2000);
+        }
+
+        function downloadQRCode(pollId) {
+            const qrContainer = document.getElementById('qr-code-container');
+            const qrImage = qrContainer.querySelector('img') || qrContainer.querySelector('canvas');
+            
+            if (qrImage) {
+                const link = document.createElement('a');
+                link.download = `poll-${pollId}-qrcode.png`;
+                
+                if (qrImage.tagName === 'IMG') {
+                    // For img elements, get the src directly
+                    link.href = qrImage.src;
+                } else {
+                    // For canvas elements, convert to data URL
+                    link.href = qrImage.toDataURL('image/png');
+                }
+                link.click();
+            } else {
+                alert('QR code not available for download. Please generate it first.');
+            }
+        }
+
+        // Handle URL parameters for direct poll links
+        function handleUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pollId = urlParams.get('poll');
+            
+            if (pollId) {
+                try {
+                    // Verify poll exists
+                    votingSystem.getPoll(pollId);
+                    currentPollId = pollId;
+                    showView('detail');
+                } catch (error) {
+                    // Poll doesn't exist, show polls list
+                    showView('polls');
+                }
+            }
+        }
+
         // Real-time updates
         votingSystem.onChange(() => {
             const activeView = document.querySelector('.view.active');
@@ -866,7 +1078,10 @@
 
         // Initialize
         initializeUser();
-        renderPollsList();
+        handleUrlParams(); // Check for poll ID in URL first
+        if (!currentPollId) {
+            renderPollsList();
+        }
     </script>
 </body>
 </html>

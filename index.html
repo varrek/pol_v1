@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voting System</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -392,6 +393,59 @@
         .back-button {
             margin-bottom: 20px;
         }
+
+        .qr-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .qr-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .qr-code-container {
+            display: none;
+            margin-top: 15px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .qr-code-container.visible {
+            display: inline-block;
+        }
+
+        #qr-canvas-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        #qr-canvas-container img {
+            border-radius: 8px;
+        }
+
+        .share-url {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8e8e8;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            max-width: 280px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .copy-btn {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -553,6 +607,12 @@
 
             hasUserVoted(pollId, userId) {
                 return this.votes.some(v => v.pollId === pollId && v.userId === userId);
+            }
+
+            getPollShareUrl(pollId, baseUrl) {
+                const poll = this.polls.get(pollId);
+                if (!poll) throw new Error('Poll not found');
+                return `${baseUrl}#poll=${pollId}`;
             }
 
             onChange(callback) {
@@ -774,6 +834,19 @@
                     `;
                 }
 
+                // QR Code sharing section
+                content += `
+                    <div class="qr-section">
+                        <h3>📤 Share this Poll</h3>
+                        <button class="btn btn-primary" onclick="toggleQRCode('${pollId}')">Show QR Code</button>
+                        <div id="qr-code-container" class="qr-code-container">
+                            <div id="qr-canvas-container"></div>
+                            <div id="share-url" class="share-url"></div>
+                            <button class="btn btn-secondary btn-small copy-btn" onclick="copyShareUrl()">Copy Link</button>
+                        </div>
+                    </div>
+                `;
+
                 container.innerHTML = content;
             } catch (error) {
                 container.innerHTML = `<div class="message error">${error.message}</div>`;
@@ -854,6 +927,76 @@
             }, 5000);
         }
 
+        // QR Code Functions
+        let currentShareUrl = '';
+
+        function toggleQRCode(pollId) {
+            const container = document.getElementById('qr-code-container');
+            const isVisible = container.classList.contains('visible');
+
+            if (isVisible) {
+                container.classList.remove('visible');
+                container.style.display = 'none';
+            } else {
+                generateQRCode(pollId);
+                container.classList.add('visible');
+                container.style.display = 'inline-block';
+            }
+        }
+
+        function generateQRCode(pollId) {
+            const baseUrl = window.location.href.split('#')[0];
+            currentShareUrl = votingSystem.getPollShareUrl(pollId, baseUrl);
+            
+            const qrContainer = document.getElementById('qr-canvas-container');
+            const shareUrlDiv = document.getElementById('share-url');
+            
+            // Clear previous QR code
+            qrContainer.innerHTML = '';
+            
+            // Generate QR code using qrcodejs
+            new QRCode(qrContainer, {
+                text: currentShareUrl,
+                width: 200,
+                height: 200,
+                colorDark: '#667eea',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            
+            shareUrlDiv.textContent = currentShareUrl;
+        }
+
+        function copyShareUrl() {
+            navigator.clipboard.writeText(currentShareUrl).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.classList.add('btn-success');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('btn-success');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        // Handle URL hash for deep linking
+        function handleUrlHash() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#poll=')) {
+                const pollId = hash.replace('#poll=', '');
+                try {
+                    votingSystem.getPoll(pollId);
+                    currentPollId = pollId;
+                    showView('detail');
+                } catch (e) {
+                    // Poll not found, stay on polls list
+                }
+            }
+        }
+
         // Real-time updates
         votingSystem.onChange(() => {
             const activeView = document.querySelector('.view.active');
@@ -867,6 +1010,10 @@
         // Initialize
         initializeUser();
         renderPollsList();
+        handleUrlHash();
+
+        // Handle hash changes for navigation
+        window.addEventListener('hashchange', handleUrlHash);
     </script>
 </body>
 </html>

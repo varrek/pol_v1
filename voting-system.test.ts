@@ -3,7 +3,7 @@
  * Tests all requirements and scenarios from the OpenSpec specification
  */
 
-import { VotingSystem } from './voting-system';
+import { VotingSystem, getPollShareUrl, getPollIdFromUrl } from './voting-system';
 
 describe('VotingSystem', () => {
   let system: VotingSystem;
@@ -510,6 +510,127 @@ describe('VotingSystem', () => {
       expect(results2.totalVotes).toBe(1);
       expect(results1.voteCounts).toEqual([1, 0]);
       expect(results2.voteCounts).toEqual([0, 1, 0]);
+    });
+  });
+});
+
+// ==========================================================================
+// Poll Share URL Helper Tests (QR Code Functionality)
+// ==========================================================================
+
+describe('Poll Share URL Helpers', () => {
+  // ==========================================================================
+  // Requirement: Poll Share URL
+  // ==========================================================================
+
+  describe('getPollShareUrl', () => {
+    test('Generate URL with poll ID as query parameter', () => {
+      // WHEN the share URL is generated for a poll
+      const url = getPollShareUrl('poll_123');
+
+      // THEN the URL contains the poll ID as a query parameter
+      expect(url).toBe('?poll=poll_123');
+    });
+
+    test('Generate URL with base URL', () => {
+      // WHEN generating a share URL with a base URL
+      const url = getPollShareUrl('poll_456', 'https://example.com/voting');
+
+      // THEN the full URL is properly formed
+      expect(url).toBe('https://example.com/voting?poll=poll_456');
+    });
+
+    test('URL encodes special characters in poll ID', () => {
+      // WHEN generating a URL with special characters in poll ID
+      const url = getPollShareUrl('poll with spaces & symbols');
+
+      // THEN the poll ID is properly encoded
+      expect(url).toBe('?poll=poll%20with%20spaces%20%26%20symbols');
+    });
+
+    test('Reject empty poll ID', () => {
+      // WHEN attempting to generate URL with empty poll ID
+      // THEN an error is thrown
+      expect(() => {
+        getPollShareUrl('');
+      }).toThrow('Poll ID cannot be empty');
+
+      expect(() => {
+        getPollShareUrl('   ');
+      }).toThrow('Poll ID cannot be empty');
+    });
+  });
+
+  describe('getPollIdFromUrl', () => {
+    test('Extract poll ID from URL with query parameter', () => {
+      // WHEN parsing a URL with a poll parameter
+      const pollId = getPollIdFromUrl('https://example.com/voting?poll=poll_123');
+
+      // THEN the poll ID is correctly extracted
+      expect(pollId).toBe('poll_123');
+    });
+
+    test('Extract poll ID from relative URL', () => {
+      // WHEN parsing a relative URL with poll parameter
+      const pollId = getPollIdFromUrl('/voting?poll=poll_789');
+
+      // THEN the poll ID is correctly extracted
+      expect(pollId).toBe('poll_789');
+    });
+
+    test('Return null for URL without poll parameter', () => {
+      // WHEN parsing a URL without poll parameter
+      const pollId = getPollIdFromUrl('https://example.com/voting');
+
+      // THEN null is returned
+      expect(pollId).toBeNull();
+    });
+
+    test('Handle URL-encoded poll ID', () => {
+      // WHEN parsing a URL with encoded poll ID
+      const pollId = getPollIdFromUrl('?poll=poll%20with%20spaces');
+
+      // THEN the poll ID is decoded
+      expect(pollId).toBe('poll with spaces');
+    });
+
+    test('Handle URL with multiple query parameters', () => {
+      // WHEN parsing URL with multiple parameters
+      const pollId = getPollIdFromUrl('https://example.com?user=123&poll=poll_456&mode=view');
+
+      // THEN the poll ID is correctly extracted
+      expect(pollId).toBe('poll_456');
+    });
+
+    test('Return null for invalid URL', () => {
+      // WHEN parsing an invalid URL format
+      const pollId = getPollIdFromUrl('not a valid url at all:::');
+
+      // THEN null is returned (graceful handling)
+      // Note: URL constructor with base URL handles most edge cases
+      expect(pollId).toBeNull();
+    });
+  });
+
+  describe('URL Roundtrip', () => {
+    test('Poll ID survives generate and parse roundtrip', () => {
+      // WHEN generating a URL and then parsing it back
+      const originalPollId = 'poll_abc123';
+      const shareUrl = getPollShareUrl(originalPollId, 'https://example.com');
+      const parsedPollId = getPollIdFromUrl(shareUrl);
+
+      // THEN the poll ID is preserved
+      expect(parsedPollId).toBe(originalPollId);
+    });
+
+    test('Special characters survive roundtrip', () => {
+      // WHEN generating and parsing a URL with special characters
+      const originalPollId = 'poll_with-special.chars_123';
+      const shareUrl = getPollShareUrl(originalPollId, 'https://example.com');
+      const parsedPollId = getPollIdFromUrl(shareUrl);
+
+      // THEN the poll ID is preserved
+      expect(parsedPollId).toBe(originalPollId);
     });
   });
 });

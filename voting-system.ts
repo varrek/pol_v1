@@ -109,7 +109,7 @@ class VotingSystem {
       optionIndex,
       timestamp: new Date(),
     };
-    this.votes.push(vote);
+    this.votes = [...this.votes, vote];
   }
 
   // ==========================================================================
@@ -123,12 +123,12 @@ class VotingSystem {
     }
 
     // Count votes for each option
-    const voteCounts = new Array(poll.options.length).fill(0);
     const pollVotes = this.votes.filter((v) => v.pollId === pollId);
-
-    for (const vote of pollVotes) {
-      voteCounts[vote.optionIndex]++;
-    }
+    const voteCounts = pollVotes.reduce((counts, vote) => {
+      const newCounts = [...counts];
+      newCounts[vote.optionIndex] = (newCounts[vote.optionIndex] || 0) + 1;
+      return newCounts;
+    }, new Array(poll.options.length).fill(0));
 
     return {
       pollId: poll.id,
@@ -155,8 +155,11 @@ class VotingSystem {
       throw new Error('Only the poll creator can close this poll');
     }
 
-    poll.status = 'closed';
-    poll.closedAt = new Date();
+    this.polls.set(pollId, {
+      ...poll,
+      status: 'closed',
+      closedAt: new Date(),
+    });
   }
 
   deletePoll(pollId: string, userId: string): void {

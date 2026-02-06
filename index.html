@@ -764,6 +764,19 @@
                     content += renderResults(results);
                 }
 
+                // Share link and QR code
+                const shareUrl = window.location.origin + window.location.pathname.replace(/#.*$/, '') + '#' + pollId;
+                const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(shareUrl);
+                content += `
+                    <div class="share-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                        <h3 style="font-size: 1em; color: #555; margin-bottom: 10px;">Share this poll</h3>
+                        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <img src="${qrSrc}" alt="QR code for poll" width="150" height="150" style="display: block;">
+                            <div style="font-size: 14px; color: #777; word-break: break-all;">${shareUrl}</div>
+                        </div>
+                    </div>
+                `;
+
                 // Management buttons for creator
                 if (isCreator) {
                     content += `
@@ -864,9 +877,23 @@
             }
         });
 
+        // Open poll from hash on load (deep link / QR)
+        function openPollFromHash() {
+            const hash = window.location.hash.slice(1);
+            if (hash && /^poll_\d+$/.test(hash)) {
+                try {
+                    votingSystem.getPoll(hash);
+                    viewPoll(hash);
+                } catch (e) {
+                    // Poll not in current session; stay on list
+                }
+            }
+        }
+
         // Initialize
         initializeUser();
         renderPollsList();
+        openPollFromHash();
     </script>
 </body>
 </html>

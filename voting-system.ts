@@ -212,8 +212,21 @@ class VotingSystem {
 }
 
 // ============================================================================
+// Share URL (for QR code and deep links)
+// ============================================================================
+
+/**
+ * Builds a shareable URL for a poll. Caller should pass base URL (e.g. origin + pathname).
+ * The returned URL uses the hash fragment so opening it can show the poll.
+ */
+function buildPollShareUrl(baseUrl: string, pollId: string): string {
+  const base = baseUrl.replace(/#.*$/, '').replace(/\/?$/, '');
+  return `${base}#${pollId}`;
+}
+
+// ============================================================================
 // Export
 // ============================================================================
 
-export { VotingSystem, Poll, Vote, PollResults };
+export { VotingSystem, Poll, Vote, PollResults, buildPollShareUrl };
 

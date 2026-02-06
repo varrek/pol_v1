@@ -3,7 +3,7 @@
  * Tests all requirements and scenarios from the OpenSpec specification
  */
 
-import { VotingSystem } from './voting-system';
+import { VotingSystem, buildPollShareUrl } from './voting-system';
 
 describe('VotingSystem', () => {
   let system: VotingSystem;
@@ -511,6 +511,30 @@ describe('VotingSystem', () => {
       expect(results1.voteCounts).toEqual([1, 0]);
       expect(results2.voteCounts).toEqual([0, 1, 0]);
     });
+  });
+});
+
+// ==========================================================================
+// Share URL (QR code / deep link)
+// ==========================================================================
+
+describe('buildPollShareUrl', () => {
+  test('builds share URL with hash fragment', () => {
+    expect(buildPollShareUrl('http://localhost/', 'poll_1')).toBe(
+      'http://localhost#poll_1'
+    );
+  });
+
+  test('strips existing hash from base URL', () => {
+    expect(buildPollShareUrl('http://localhost/#other', 'poll_2')).toBe(
+      'http://localhost#poll_2'
+    );
+  });
+
+  test('uses pathname when provided', () => {
+    expect(buildPollShareUrl('http://localhost/app', 'poll_3')).toBe(
+      'http://localhost/app#poll_3'
+    );
   });
 });
 

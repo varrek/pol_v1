@@ -59,6 +59,34 @@ describe('VotingSystem', () => {
         system.createPoll('   ', ['Option 1', 'Option 2'], 'user1');
       }).toThrow('Question cannot be empty');
     });
+
+    test('Reject poll with empty options', () => {
+      // WHEN a user attempts to create a poll with empty option strings
+      // THEN the system rejects the request with an appropriate error message
+      expect(() => {
+        system.createPoll('Question?', ['Option 1', ''], 'user1');
+      }).toThrow('Options cannot be empty');
+
+      expect(() => {
+        system.createPoll('Question?', ['', 'Option 2'], 'user1');
+      }).toThrow('Options cannot be empty');
+
+      expect(() => {
+        system.createPoll('Question?', ['Option 1', '   '], 'user1');
+      }).toThrow('Options cannot be empty');
+    });
+
+    test('Reject poll with empty creator', () => {
+      // WHEN a user attempts to create a poll with empty creator
+      // THEN the system rejects the request with an appropriate error message
+      expect(() => {
+        system.createPoll('Question?', ['Option 1', 'Option 2'], '');
+      }).toThrow('Creator cannot be empty');
+
+      expect(() => {
+        system.createPoll('Question?', ['Option 1', 'Option 2'], '   ');
+      }).toThrow('Creator cannot be empty');
+    });
   });
 
   // ==========================================================================

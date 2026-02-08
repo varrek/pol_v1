@@ -56,6 +56,14 @@ class VotingSystem {
     if (options.length < 2) {
       throw new Error('Poll must have at least two options');
     }
+    if (options.some(opt => !opt || opt.trim() === '')) {
+      throw new Error('Options cannot be empty');
+    }
+
+    // Validate creator
+    if (!creator || creator.trim() === '') {
+      throw new Error('Creator cannot be empty');
+    }
 
     // Generate unique ID and create poll
     const id = this.generateId();
@@ -155,8 +163,13 @@ class VotingSystem {
       throw new Error('Only the poll creator can close this poll');
     }
 
-    poll.status = 'closed';
-    poll.closedAt = new Date();
+    // Update poll immutably
+    const updatedPoll: Poll = {
+      ...poll,
+      status: 'closed',
+      closedAt: new Date(),
+    };
+    this.polls.set(pollId, updatedPoll);
   }
 
   deletePoll(pollId: string, userId: string): void {

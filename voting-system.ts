@@ -109,7 +109,7 @@ class VotingSystem {
       optionIndex,
       timestamp: new Date(),
     };
-    this.votes.push(vote);
+    this.votes = [...this.votes, vote];
   }
 
   // ==========================================================================
@@ -155,8 +155,7 @@ class VotingSystem {
       throw new Error('Only the poll creator can close this poll');
     }
 
-    poll.status = 'closed';
-    poll.closedAt = new Date();
+    this.polls.set(pollId, { ...poll, status: 'closed', closedAt: new Date() });
   }
 
   deletePoll(pollId: string, userId: string): void {
@@ -184,11 +183,11 @@ class VotingSystem {
     if (!poll) {
       throw new Error('Poll not found');
     }
-    return { ...poll }; // Return a copy
+    return { ...poll, options: [...poll.options] };
   }
 
   getAllPolls(): Poll[] {
-    return Array.from(this.polls.values()).map(poll => ({ ...poll }));
+    return Array.from(this.polls.values()).map(poll => ({ ...poll, options: [...poll.options] }));
   }
 
   hasUserVoted(pollId: string, userId: string): boolean {

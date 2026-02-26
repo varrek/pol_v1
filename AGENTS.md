@@ -17,6 +17,27 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
 
+# JIRA Workflow (when working on a JIRA issue)
+
+When working on a JIRA issue (e.g. KAN-xxx):
+
+1. **Branch**: Create a feature branch from `main` (e.g. `feature/KAN-123-short-description`).
+2. **Status**: When starting work, transition the issue to **In Progress** (or project equivalent).
+3. **Implement**: Complete the work; run `npm test` and UI/browser tests before opening a PR.
+4. **UI tests**: Run or verify UI (see "UI testing" below). Use the webapp-testing skill (e.g. `scripts/with_server.py` + Playwright) or manual verification.
+5. **PR**: Open a pull request with the JIRA issue key in the title or description (e.g. `KAN-123: Add feature`).
+6. **Status**: When the PR is opened, transition the issue to **In Review** (or equivalent).
+7. **Review comments**: For each distinct follow-up from PR review, create a JIRA ticket and link to the original issue or PR.
+8. **Done**: When the PR is merged, transition the issue to **Done** (or Closed) as per project workflow.
+
+# UI Testing
+
+- **Automated**: Run the full unit test suite with `npm test`.
+- **Browser/UI**: For changes that affect the web UI, validate using one of:
+  - The **webapp-testing** skill: use `scripts/with_server.py` (see `.agents/skills/webapp-testing/SKILL.md`) with a local server and Playwright to exercise the UI.
+  - **Manual**: Open the app in a browser and verify the changed behavior.
+- Both automated and UI validation should pass before opening a PR.
+
 # Testing Requirements
 
 **All new functionality MUST include automated tests.**

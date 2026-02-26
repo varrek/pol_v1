@@ -7,6 +7,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:ui": "echo 'UI validation: see AGENTS.md § UI Testing. Use webapp-testing skill (with_server.py + Playwright) or manual verification.'",
+    "serve": "npx serve -p 8080 .",
     "prepare": "husky"
   },
   "keywords": [

@@ -62,7 +62,7 @@ class VotingSystem {
     const poll: Poll = {
       id,
       question: question.trim(),
-      options,
+      options: [...options],
       creator,
       createdAt: new Date(),
       closedAt: null,
@@ -133,7 +133,7 @@ class VotingSystem {
     return {
       pollId: poll.id,
       question: poll.question,
-      options: poll.options,
+      options: [...poll.options],
       voteCounts,
       totalVotes: pollVotes.length,
       status: poll.status,

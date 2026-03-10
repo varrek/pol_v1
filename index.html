@@ -392,9 +392,36 @@
         .back-button {
             margin-bottom: 20px;
         }
+
+        .qr-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .qr-section h3 {
+            font-size: 1em;
+            color: #555;
+            margin-bottom: 12px;
+        }
+
+        #poll-qr-container {
+            display: inline-block;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+        }
+
+        #poll-qr-container canvas,
+        #poll-qr-container img {
+            display: block;
+        }
     </style>
 </head>
 <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
     <div class="container">
         <div class="header">
             <h1>🗳️ Voting System</h1>
@@ -580,12 +607,46 @@
             document.getElementById('current-user-id').textContent = userId;
         }
 
+        // URL routing: #poll/<pollId>
+        function getPollIdFromHash() {
+            const match = (location.hash || '').match(/^#poll\/(.+)$/);
+            return match ? decodeURIComponent(match[1]) : null;
+        }
+
+        function getPollUrl(pollId) {
+            return window.location.origin + window.location.pathname + '#poll/' + encodeURIComponent(pollId);
+        }
+
+        function applyRouteFromHash() {
+            const pollId = getPollIdFromHash();
+            if (pollId) {
+                try {
+                    votingSystem.getPoll(pollId);
+                    currentPollId = pollId;
+                    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+                    document.getElementById('detail-view').classList.add('active');
+                    renderPollDetail(pollId);
+                } catch (_) {
+                    currentPollId = null;
+                    location.hash = '';
+                    showView('polls');
+                }
+            } else {
+                if (document.getElementById('detail-view').classList.contains('active')) {
+                    currentPollId = null;
+                    showView('polls');
+                }
+            }
+        }
+
         // View Management
         function showView(viewName) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
 
             if (viewName === 'polls') {
+                location.hash = '';
                 document.getElementById('polls-view').classList.add('active');
                 document.querySelector('.nav button:first-child').classList.add('active');
                 renderPollsList();
@@ -594,6 +655,7 @@
                 document.querySelector('.nav button:last-child').classList.add('active');
                 initializeCreateForm();
             } else if (viewName === 'detail') {
+                if (currentPollId) location.hash = '#poll/' + encodeURIComponent(currentPollId);
                 document.getElementById('detail-view').classList.add('active');
                 renderPollDetail(currentPollId);
             }
@@ -681,6 +743,7 @@
                 showMessage('create-message', 'Poll created successfully!', 'success');
                 setTimeout(() => {
                     currentPollId = pollId;
+                    location.hash = '#poll/' + encodeURIComponent(pollId);
                     showView('detail');
                 }, 1000);
             } catch (error) {
@@ -722,6 +785,7 @@
 
         function viewPoll(pollId) {
             currentPollId = pollId;
+            location.hash = '#poll/' + encodeURIComponent(pollId);
             showView('detail');
         }
 
@@ -764,6 +828,14 @@
                     content += renderResults(results);
                 }
 
+                // QR code for sharing
+                content += `
+                    <div class="qr-section">
+                        <h3>Share this poll</h3>
+                        <div id="poll-qr-container"></div>
+                    </div>
+                `;
+
                 // Management buttons for creator
                 if (isCreator) {
                     content += `
@@ -775,6 +847,12 @@
                 }
 
                 container.innerHTML = content;
+
+                // Generate QR code after DOM update
+                const qrContainer = document.getElementById('poll-qr-container');
+                if (qrContainer && typeof QRCode !== 'undefined') {
+                    new QRCode(qrContainer, { text: getPollUrl(pollId), width: 128, height: 128 });
+                }
             } catch (error) {
                 container.innerHTML = `<div class="message error">${error.message}</div>`;
             }
@@ -866,7 +944,12 @@
 
         // Initialize
         initializeUser();
-        renderPollsList();
+        if (getPollIdFromHash()) {
+            applyRouteFromHash();
+        } else {
+            renderPollsList();
+        }
+        window.addEventListener('hashchange', applyRouteFromHash);
     </script>
 </body>
 </html>

@@ -62,7 +62,7 @@ class VotingSystem {
     const poll: Poll = {
       id,
       question: question.trim(),
-      options,
+      options: [...options],
       creator,
       createdAt: new Date(),
       closedAt: null,
@@ -109,7 +109,7 @@ class VotingSystem {
       optionIndex,
       timestamp: new Date(),
     };
-    this.votes.push(vote);
+    this.votes = [...this.votes, vote];
   }
 
   // ==========================================================================
@@ -133,7 +133,7 @@ class VotingSystem {
     return {
       pollId: poll.id,
       question: poll.question,
-      options: poll.options,
+      options: [...poll.options],
       voteCounts,
       totalVotes: pollVotes.length,
       status: poll.status,
@@ -155,8 +155,12 @@ class VotingSystem {
       throw new Error('Only the poll creator can close this poll');
     }
 
-    poll.status = 'closed';
-    poll.closedAt = new Date();
+    const closedPoll: Poll = {
+      ...poll,
+      status: 'closed',
+      closedAt: new Date(),
+    };
+    this.polls.set(pollId, closedPoll);
   }
 
   deletePoll(pollId: string, userId: string): void {
@@ -184,11 +188,11 @@ class VotingSystem {
     if (!poll) {
       throw new Error('Poll not found');
     }
-    return { ...poll }; // Return a copy
+    return { ...poll, options: [...poll.options] }; // Return a deep copy
   }
 
   getAllPolls(): Poll[] {
-    return Array.from(this.polls.values()).map(poll => ({ ...poll }));
+    return Array.from(this.polls.values()).map(poll => ({ ...poll, options: [...poll.options] }));
   }
 
   hasUserVoted(pollId: string, userId: string): boolean {

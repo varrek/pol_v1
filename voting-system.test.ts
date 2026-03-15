@@ -364,7 +364,7 @@ describe('VotingSystem', () => {
       // THEN the stored poll is not affected
       const storedPoll = system.getPoll(pollId);
       expect(storedPoll.question).toBe('Original question?');
-      // Note: options array is shallow copied, so this test verifies current behavior
+      expect(storedPoll.options).toEqual(['A', 'B']);
     });
 
     test('Deleting poll removes all associated votes', () => {

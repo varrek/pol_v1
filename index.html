@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voting System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -392,6 +393,51 @@
         .back-button {
             margin-bottom: 20px;
         }
+
+        .qr-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px dashed #e0e0e0;
+        }
+
+        .qr-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .qr-code-container {
+            display: inline-block;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+
+        .qr-code-container canvas {
+            display: block;
+        }
+
+        .qr-instructions {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .qr-url {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #e8e8e8;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -774,7 +820,23 @@
                     `;
                 }
 
+                // QR Code section for sharing
+                const pollUrl = getPollShareUrl(pollId);
+                content += `
+                    <div class="qr-section">
+                        <h3>📱 Share this Poll</h3>
+                        <div class="qr-code-container" id="qr-code-${pollId}"></div>
+                        <div class="qr-instructions">
+                            Scan this QR code with your phone to share the poll
+                        </div>
+                        <div class="qr-url">${pollUrl}</div>
+                    </div>
+                `;
+
                 container.innerHTML = content;
+                
+                // Generate QR code after DOM is updated
+                generateQRCode(pollId, pollUrl);
             } catch (error) {
                 container.innerHTML = `<div class="message error">${error.message}</div>`;
             }
@@ -842,6 +904,36 @@
                 } catch (error) {
                     alert(error.message);
                 }
+            }
+        }
+
+        // QR Code Functions
+        function getPollShareUrl(pollId) {
+            // Use current page URL as base, append poll ID as hash
+            const baseUrl = window.location.origin + window.location.pathname;
+            return `${baseUrl}#poll=${pollId}`;
+        }
+
+        function generateQRCode(pollId, url) {
+            const container = document.getElementById(`qr-code-${pollId}`);
+            if (!container) return;
+            
+            // Clear any existing QR code
+            container.innerHTML = '';
+            
+            try {
+                // Generate new QR code using qrcodejs library
+                new QRCode(container, {
+                    text: url,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#667eea',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch (error) {
+                console.error('QR Code generation error:', error);
+                container.innerHTML = '<p style="color: #f44336;">Failed to generate QR code</p>';
             }
         }
 

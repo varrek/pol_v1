@@ -392,7 +392,87 @@
         .back-button {
             margin-bottom: 20px;
         }
+
+        .share-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .share-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .share-content {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .qr-container {
+            text-align: center;
+        }
+
+        .qr-code {
+            background: white;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .qr-code canvas {
+            display: block;
+        }
+
+        .url-section {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .url-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .url-input-group input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f9f9f9;
+        }
+
+        .copy-feedback {
+            color: #4caf50;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .copy-feedback.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 600px) {
+            .share-content {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .url-section {
+                width: 100%;
+            }
+        }
     </style>
+    <!-- QR Code Generation Library (qrcodejs by davidshimjs) -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -864,9 +944,213 @@
             }
         });
 
+        // URL-based Poll Navigation
+        function getPollIdFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('poll');
+        }
+
+        function updateURLWithPoll(pollId) {
+            const url = new URL(window.location);
+            if (pollId) {
+                url.searchParams.set('poll', pollId);
+            } else {
+                url.searchParams.delete('poll');
+            }
+            window.history.pushState({}, '', url);
+        }
+
+        function getShareableURL(pollId) {
+            const url = new URL(window.location);
+            url.searchParams.set('poll', pollId);
+            return url.toString();
+        }
+
+        // QR Code Generation
+        function generateQRCode(pollId, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const shareableURL = getShareableURL(pollId);
+            
+            try {
+                // Clear previous QR code
+                container.innerHTML = '';
+                
+                // Generate QR code using qrcodejs
+                new QRCode(container, {
+                    text: shareableURL,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#333333',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } catch (error) {
+                container.innerHTML = '<p style="color: #f44336;">Failed to generate QR code</p>';
+                console.error('QR Code generation failed:', error);
+            }
+        }
+
+        function downloadQRCode(pollId) {
+            // qrcodejs creates both canvas and img elements
+            const canvas = document.querySelector('#qr-code-container canvas');
+            const img = document.querySelector('#qr-code-container img');
+            
+            const link = document.createElement('a');
+            link.download = `poll-${pollId}-qr.png`;
+            
+            if (canvas) {
+                link.href = canvas.toDataURL('image/png');
+            } else if (img) {
+                link.href = img.src;
+            } else {
+                return;
+            }
+            
+            link.click();
+        }
+
+        async function copyPollURL(pollId) {
+            const shareableURL = getShareableURL(pollId);
+            try {
+                await navigator.clipboard.writeText(shareableURL);
+                const feedback = document.getElementById('copy-feedback');
+                feedback.classList.add('show');
+                setTimeout(() => feedback.classList.remove('show'), 2000);
+            } catch (error) {
+                // Fallback for browsers without clipboard API
+                const input = document.getElementById('poll-url-input');
+                input.select();
+                document.execCommand('copy');
+                const feedback = document.getElementById('copy-feedback');
+                feedback.classList.add('show');
+                setTimeout(() => feedback.classList.remove('show'), 2000);
+            }
+        }
+
+        // Override viewPoll to update URL
+        const originalViewPoll = viewPoll;
+        viewPoll = function(pollId) {
+            updateURLWithPoll(pollId);
+            originalViewPoll(pollId);
+        };
+
+        // Override showView to update URL when going back to polls
+        const originalShowView = showView;
+        showView = function(viewName) {
+            if (viewName === 'polls') {
+                updateURLWithPoll(null);
+            }
+            originalShowView(viewName);
+        };
+
+        // Update renderPollDetail to include share section
+        const originalRenderPollDetail = renderPollDetail;
+        renderPollDetail = function(pollId) {
+            const container = document.getElementById('poll-detail');
+            try {
+                const poll = votingSystem.getPoll(pollId);
+                const results = votingSystem.getResults(pollId);
+                const hasVoted = votingSystem.hasUserVoted(pollId, currentUserId);
+                const isCreator = poll.creator === currentUserId;
+                const isClosed = poll.status === 'closed';
+
+                let content = `<h2>${poll.question}</h2>`;
+
+                if (isClosed) {
+                    content += `<div class="message info">This poll is closed</div>`;
+                }
+
+                if (hasVoted) {
+                    content += `<div class="message info">You have already voted on this poll</div>`;
+                }
+
+                // Show voting form or results
+                if (!hasVoted && !isClosed) {
+                    content += `
+                        <form class="voting-form" onsubmit="handleVote(event, '${pollId}')">
+                            <div class="radio-group">
+                                ${poll.options.map((option, index) => `
+                                    <label class="radio-option">
+                                        <input type="radio" name="vote-option" value="${index}" required>
+                                        <span>${option}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                            <button type="submit" class="btn btn-primary">Cast Vote</button>
+                        </form>
+                    `;
+                } else {
+                    content += renderResults(results);
+                }
+
+                // Share section with QR code
+                const shareableURL = getShareableURL(pollId);
+                content += `
+                    <div class="share-section">
+                        <h3>📤 Share this Poll</h3>
+                        <div class="share-content">
+                            <div class="qr-container">
+                                <div class="qr-code" id="qr-code-container"></div>
+                                <button class="btn btn-secondary btn-small" onclick="downloadQRCode('${pollId}')">
+                                    ⬇️ Download QR
+                                </button>
+                            </div>
+                            <div class="url-section">
+                                <label>Poll URL</label>
+                                <div class="url-input-group">
+                                    <input type="text" id="poll-url-input" value="${shareableURL}" readonly>
+                                    <button class="btn btn-primary btn-small" onclick="copyPollURL('${pollId}')">
+                                        📋 Copy
+                                    </button>
+                                </div>
+                                <span id="copy-feedback" class="copy-feedback">✓ Copied to clipboard!</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Management buttons for creator
+                if (isCreator) {
+                    content += `
+                        <div class="action-buttons">
+                            ${!isClosed ? `<button class="btn btn-secondary" onclick="handleClosePoll('${pollId}')">Close Poll</button>` : ''}
+                            <button class="btn btn-danger" onclick="handleDeletePoll('${pollId}')">Delete Poll</button>
+                        </div>
+                    `;
+                }
+
+                container.innerHTML = content;
+
+                // Generate QR code after DOM is updated
+                setTimeout(() => generateQRCode(pollId, 'qr-code-container'), 0);
+            } catch (error) {
+                container.innerHTML = `<div class="message error">${error.message}</div>`;
+            }
+        };
+
+        // Handle initial URL navigation
+        function handleInitialNavigation() {
+            const pollId = getPollIdFromURL();
+            if (pollId) {
+                try {
+                    // Check if poll exists
+                    votingSystem.getPoll(pollId);
+                    currentPollId = pollId;
+                    showView('detail');
+                } catch (error) {
+                    // Invalid poll ID - show error and redirect to polls list
+                    showView('polls');
+                    showMessage('polls-list', `Poll "${pollId}" not found`, 'error');
+                }
+            }
+        }
+
         // Initialize
         initializeUser();
         renderPollsList();
+        handleInitialNavigation();
     </script>
 </body>
 </html>

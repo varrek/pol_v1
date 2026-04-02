@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voting System</title>
+    <!-- QR Code Generation Library (browser-compatible) -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -392,6 +394,93 @@
         .back-button {
             margin-bottom: 20px;
         }
+
+        /* QR Code Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .modal p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .qr-code-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            display: inline-block;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .qr-code-container canvas {
+            display: block;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-qr {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-qr:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -444,6 +533,21 @@
                     <button class="btn btn-secondary btn-small" onclick="showView('polls')">← Back to Polls</button>
                 </div>
                 <div id="poll-detail"></div>
+            </div>
+        </div>
+
+        <!-- QR Code Modal -->
+        <div id="qr-modal" class="modal-overlay" onclick="closeQrModal(event)">
+            <div class="modal" onclick="event.stopPropagation()">
+                <h3>Share Poll via QR Code</h3>
+                <p id="qr-poll-question"></p>
+                <div class="qr-code-container">
+                    <canvas id="qr-canvas"></canvas>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn btn-qr" onclick="downloadQrCode()">Download QR Code</button>
+                    <button class="btn btn-secondary" onclick="closeQrModal()">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -764,15 +868,14 @@
                     content += renderResults(results);
                 }
 
-                // Management buttons for creator
-                if (isCreator) {
-                    content += `
-                        <div class="action-buttons">
-                            ${!isClosed ? `<button class="btn btn-secondary" onclick="handleClosePoll('${pollId}')">Close Poll</button>` : ''}
-                            <button class="btn btn-danger" onclick="handleDeletePoll('${pollId}')">Delete Poll</button>
-                        </div>
-                    `;
-                }
+                // Action buttons - QR code sharing available to all, management for creator
+                content += `
+                    <div class="action-buttons">
+                        <button class="btn btn-qr" onclick="showQrCode('${pollId}')">📱 Share QR Code</button>
+                        ${isCreator && !isClosed ? `<button class="btn btn-secondary" onclick="handleClosePoll('${pollId}')">Close Poll</button>` : ''}
+                        ${isCreator ? `<button class="btn btn-danger" onclick="handleDeletePoll('${pollId}')">Delete Poll</button>` : ''}
+                    </div>
+                `;
 
                 container.innerHTML = content;
             } catch (error) {
@@ -864,9 +967,100 @@
             }
         });
 
+        // QR Code Functions
+        let currentQrPollId = null;
+
+        function generatePollUrl(pollId) {
+            // Generate a shareable URL for the poll
+            const baseUrl = window.location.origin + window.location.pathname;
+            return `${baseUrl}?poll=${pollId}`;
+        }
+
+        function showQrCode(pollId) {
+            currentQrPollId = pollId;
+            const poll = votingSystem.getPoll(pollId);
+            const pollUrl = generatePollUrl(pollId);
+            
+            document.getElementById('qr-poll-question').textContent = poll.question;
+            
+            try {
+                // Generate QR code using qrcode-generator library
+                const qr = qrcode(0, 'M');
+                qr.addData(pollUrl);
+                qr.make();
+                
+                // Draw to canvas
+                const canvas = document.getElementById('qr-canvas');
+                const ctx = canvas.getContext('2d');
+                const cellSize = 5;
+                const moduleCount = qr.getModuleCount();
+                const size = moduleCount * cellSize + 20; // Add padding
+                
+                canvas.width = size;
+                canvas.height = size;
+                
+                // Fill background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
+                
+                // Draw QR code
+                ctx.fillStyle = '#333333';
+                for (let row = 0; row < moduleCount; row++) {
+                    for (let col = 0; col < moduleCount; col++) {
+                        if (qr.isDark(row, col)) {
+                            ctx.fillRect(
+                                col * cellSize + 10,
+                                row * cellSize + 10,
+                                cellSize,
+                                cellSize
+                            );
+                        }
+                    }
+                }
+                
+                document.getElementById('qr-modal').classList.add('active');
+            } catch (error) {
+                console.error('QR Code generation error:', error);
+                alert('Failed to generate QR code');
+            }
+        }
+
+        function closeQrModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('qr-modal').classList.remove('active');
+            currentQrPollId = null;
+        }
+
+        function downloadQrCode() {
+            if (!currentQrPollId) return;
+            
+            const canvas = document.getElementById('qr-canvas');
+            const link = document.createElement('a');
+            link.download = `poll-${currentQrPollId}-qr.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Handle URL parameters for direct poll access
+        function handleUrlParameters() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pollId = urlParams.get('poll');
+            if (pollId) {
+                try {
+                    votingSystem.getPoll(pollId); // Check if poll exists
+                    currentPollId = pollId;
+                    showView('detail');
+                } catch (e) {
+                    // Poll not found, show list
+                    console.log('Poll not found:', pollId);
+                }
+            }
+        }
+
         // Initialize
         initializeUser();
         renderPollsList();
+        handleUrlParameters();
     </script>
 </body>
 </html>

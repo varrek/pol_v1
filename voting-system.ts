@@ -62,7 +62,7 @@ class VotingSystem {
     const poll: Poll = {
       id,
       question: question.trim(),
-      options,
+      options: [...options],
       creator,
       createdAt: new Date(),
       closedAt: null,
@@ -109,7 +109,7 @@ class VotingSystem {
       optionIndex,
       timestamp: new Date(),
     };
-    this.votes.push(vote);
+    this.votes = [...this.votes, vote];
   }
 
   // ==========================================================================
@@ -155,12 +155,7 @@ class VotingSystem {
       throw new Error('Only the poll creator can close this poll');
     }
 
-    const updatedPoll: Poll = {
-      ...poll,
-      status: 'closed',
-      closedAt: new Date(),
-    };
-    this.polls.set(pollId, updatedPoll);
+    this.polls.set(pollId, { ...poll, status: 'closed', closedAt: new Date() });
   }
 
   deletePoll(pollId: string, userId: string): void {

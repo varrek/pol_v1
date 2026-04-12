@@ -122,18 +122,15 @@ class VotingSystem {
       throw new Error('Poll not found');
     }
 
-    // Count votes for each option
-    const voteCounts = new Array(poll.options.length).fill(0);
     const pollVotes = this.votes.filter((v) => v.pollId === pollId);
-
-    for (const vote of pollVotes) {
-      voteCounts[vote.optionIndex]++;
-    }
+    const voteCounts = poll.options.map((_, index) =>
+      pollVotes.filter((v) => v.optionIndex === index).length
+    );
 
     return {
       pollId: poll.id,
       question: poll.question,
-      options: poll.options,
+      options: [...poll.options],
       voteCounts,
       totalVotes: pollVotes.length,
       status: poll.status,
@@ -183,11 +180,11 @@ class VotingSystem {
     if (!poll) {
       throw new Error('Poll not found');
     }
-    return { ...poll }; // Return a copy
+    return { ...poll, options: [...poll.options] };
   }
 
   getAllPolls(): Poll[] {
-    return Array.from(this.polls.values()).map(poll => ({ ...poll }));
+    return Array.from(this.polls.values()).map(poll => ({ ...poll, options: [...poll.options] }));
   }
 
   hasUserVoted(pollId: string, userId: string): boolean {

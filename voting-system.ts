@@ -199,12 +199,6 @@ class VotingSystem {
     return `poll_${this.nextId++}`;
   }
 
-  // Test helper: clear all data
-  clear(): void {
-    this.polls.clear();
-    this.votes = [];
-    this.nextId = 1;
-  }
 }
 
 // ============================================================================

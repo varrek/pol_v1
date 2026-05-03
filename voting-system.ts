@@ -1,12 +1,3 @@
-/**
- * Simple Voting System
- * Implements poll creation, voting, and result management
- */
-
-// ============================================================================
-// Data Structures
-// ============================================================================
-
 interface Poll {
   id: string;
   question: string;
@@ -33,31 +24,19 @@ interface PollResults {
   status: 'open' | 'closed';
 }
 
-// ============================================================================
-// Storage
-// ============================================================================
-
 class VotingSystem {
   private polls: Map<string, Poll> = new Map();
   private votes: Vote[] = [];
   private nextId = 1;
 
-  // ==========================================================================
-  // Poll Creation
-  // ==========================================================================
-
   createPoll(question: string, options: string[], creator: string): string {
-    // Validate question
     if (!question || question.trim() === '') {
       throw new Error('Question cannot be empty');
     }
-
-    // Validate options
     if (options.length < 2) {
       throw new Error('Poll must have at least two options');
     }
 
-    // Generate unique ID and create poll
     const id = this.generateId();
     const poll: Poll = {
       id,
@@ -73,28 +52,18 @@ class VotingSystem {
     return id;
   }
 
-  // ==========================================================================
-  // Vote Casting
-  // ==========================================================================
-
   castVote(pollId: string, userId: string, optionIndex: number): void {
-    // Check if poll exists
     const poll = this.polls.get(pollId);
     if (!poll) {
       throw new Error('Poll not found');
     }
-
-    // Check if poll is open
     if (poll.status === 'closed') {
       throw new Error('Cannot vote on a closed poll');
     }
-
-    // Check if option is valid
     if (optionIndex < 0 || optionIndex >= poll.options.length) {
       throw new Error('Invalid option');
     }
 
-    // Check for duplicate vote
     const existingVote = this.votes.find(
       (v) => v.pollId === pollId && v.userId === userId
     );
@@ -102,7 +71,6 @@ class VotingSystem {
       throw new Error('User has already voted on this poll');
     }
 
-    // Record the vote
     const vote: Vote = {
       pollId,
       userId,
@@ -111,10 +79,6 @@ class VotingSystem {
     };
     this.votes = [...this.votes, vote];
   }
-
-  // ==========================================================================
-  // Result Viewing
-  // ==========================================================================
 
   getResults(pollId: string): PollResults {
     const poll = this.polls.get(pollId);
@@ -137,17 +101,11 @@ class VotingSystem {
     };
   }
 
-  // ==========================================================================
-  // Poll Management
-  // ==========================================================================
-
   closePoll(pollId: string, userId: string): void {
     const poll = this.polls.get(pollId);
     if (!poll) {
       throw new Error('Poll not found');
     }
-
-    // Check authorization
     if (poll.creator !== userId) {
       throw new Error('Only the poll creator can close this poll');
     }
@@ -160,20 +118,13 @@ class VotingSystem {
     if (!poll) {
       throw new Error('Poll not found');
     }
-
-    // Check authorization
     if (poll.creator !== userId) {
       throw new Error('Only the poll creator can delete this poll');
     }
 
-    // Remove poll and associated votes
     this.polls.delete(pollId);
     this.votes = this.votes.filter((v) => v.pollId !== pollId);
   }
-
-  // ==========================================================================
-  // Poll Retrieval
-  // ==========================================================================
 
   getPoll(pollId: string): Poll {
     const poll = this.polls.get(pollId);
@@ -191,19 +142,9 @@ class VotingSystem {
     return this.votes.some(v => v.pollId === pollId && v.userId === userId);
   }
 
-  // ==========================================================================
-  // Helper Methods
-  // ==========================================================================
-
   private generateId(): string {
     return `poll_${this.nextId++}`;
   }
-
 }
 
-// ============================================================================
-// Export
-// ============================================================================
-
 export { VotingSystem, Poll, Vote, PollResults };
-
